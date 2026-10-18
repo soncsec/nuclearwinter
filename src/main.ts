@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import './style.css';
 import { GAME_HEIGHT, GAME_WIDTH } from './config/tuning';
 import { deviceZoom } from './logic/scaling';
+import { FONT_FAMILY } from './assets/manifest';
 import { GameScene } from './scenes/GameScene';
 
 // Whole-number zoom in device pixels, given to Phaser in CSS pixels (ADR-NW02).
@@ -13,6 +14,9 @@ const zoomForWindow = (): number =>
     GAME_WIDTH,
     GAME_HEIGHT,
   ).cssZoom;
+
+// Phaser draws text once, so the font must be ready before the first scene starts.
+await document.fonts.load(`8px ${FONT_FAMILY}`);
 
 export const game = new Phaser.Game({
   type: Phaser.AUTO,

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { DEFAULT_SEED, GAME_HEIGHT, GAME_WIDTH, PLAYER } from '../config/tuning';
+import { IMAGES, SHEETS } from '../assets/manifest';
+import { DEFAULT_SEED, GAME_HEIGHT, GAME_WIDTH, PLAYER, SKY } from '../config/tuning';
 import { screenBounds, step, type Axis, type Point } from '../logic/movement';
 import { createRng, type Rng } from '../logic/rng';
 
@@ -27,6 +28,16 @@ export class GameScene extends Phaser.Scene {
     super('Game');
   }
 
+  preload(): void {
+    for (const [key, path] of Object.entries(IMAGES)) this.load.image(key, path);
+    for (const [key, sheet] of Object.entries(SHEETS)) {
+      this.load.spritesheet(key, sheet.path, {
+        frameWidth: sheet.frameWidth,
+        frameHeight: sheet.frameHeight,
+      });
+    }
+  }
+
   create(): void {
     this.seed = seedFromUrl();
     this.rng = createRng(this.seed);
@@ -41,6 +52,11 @@ export class GameScene extends Phaser.Scene {
         0.6,
       );
     }
+    // The distant skyline, tiled across the screen. Its own sky matches the game's sky colour.
+    this.cameras.main.setBackgroundColor(SKY.color);
+    this.add
+      .tileSprite(0, SKY.skylineTop, GAME_WIDTH, SKY.skylineHeight, 'skylineFar')
+      .setOrigin(0, 0);
     this.pos = { x: GAME_WIDTH / 2, y: GAME_HEIGHT * PLAYER.startY };
     this.player = this.add.rectangle(
       this.pos.x,
