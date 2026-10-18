@@ -168,3 +168,27 @@ test('without ?seed each game gets a new random seed', async ({ page }, info) =>
   await tapToRestart(page, info);
   expect((await snapshot(page)).seed).not.toBe(first);
 });
+
+test('reaching 10,000 points rebuilds a lost city at the next wave', async ({ page }, info) => {
+  await openGame(page, '?seed=7');
+  await page.evaluate(() => window.__game?.holdWave());
+  await page.evaluate(
+    (ground) =>
+      window.__game?.launchWarhead({ x: 104, y: ground - 20 }, { x: 104, y: ground }, 200),
+    GROUND_Y,
+  );
+  await expect.poll(async () => (await snapshot(page)).cities[1]).toBe(false);
+  // Just short of 10,000; the end-of-wave bonus carries it over.
+  await page.evaluate(() => window.__game?.setScore(9_900));
+  await page.evaluate(() => window.__game?.finishWave());
+  await expect
+    .poll(async () => (await snapshot(page)).phase, { timeout: 10_000 })
+    .toBe('waveCleared');
+  expect((await snapshot(page)).score).toBeGreaterThanOrEqual(10_000);
+
+  await tapToRestart(page, info);
+  await expect.poll(async () => (await snapshot(page)).hudWave).toBe('WAVE 2');
+  const snap = await snapshot(page);
+  expect(snap.cities).toEqual([true, true, true, true, true, true]);
+  expect(snap.bannersShown.at(-1)).toBe('WAVE 2\nBONUS CITY');
+});

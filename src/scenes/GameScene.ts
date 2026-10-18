@@ -185,6 +185,8 @@ export class GameScene extends Phaser.Scene {
         fontFamily: FONT_FAMILY,
         fontSize: `${HUD.fontSizePx}px`,
         color: COLORS.hud,
+        align: 'center',
+        lineSpacing: SCREENS.bannerLineSpacing,
       })
       .setOrigin(0.5, 0)
       .setVisible(false);
@@ -264,6 +266,12 @@ export class GameScene extends Phaser.Scene {
     this.restartDelayMs = ms;
   }
 
+  /** For the test hook: sets the score, e.g. to just below a bonus city. */
+  testSetScore(score: number): void {
+    this.world.score = score;
+    this.updateScore();
+  }
+
   snapshot(): GameSnapshot {
     const w = this.world;
     return {
@@ -332,6 +340,12 @@ export class GameScene extends Phaser.Scene {
           this.showWave();
           defensesChanged = true;
           break;
+        case 'bonusCity':
+          this.addToBanner(e.count === 1 ? 'BONUS CITY' : `${e.count} BONUS CITIES`);
+          break;
+        case 'cityRebuilt':
+          defensesChanged = true;
+          break;
         case 'gameOver':
           this.showMessage(
             'GAME OVER',
@@ -390,6 +404,13 @@ export class GameScene extends Phaser.Scene {
     this.waveBanner.setText(label).setVisible(true);
     this.bannersShown.push(label);
     this.bannerUntil = this.time.now + SCREENS.waveBannerMs;
+  }
+
+  /** Adds a second line under the "WAVE n" banner that is showing. */
+  private addToBanner(line: string): void {
+    const label = `${this.waveBanner.text}\n${line}`;
+    this.waveBanner.setText(label);
+    this.bannersShown[this.bannersShown.length - 1] = label;
   }
 
   private canRestart(): boolean {

@@ -436,3 +436,60 @@ describe('end-of-wave bonus', () => {
     expect(w.score).toBe(0);
   });
 });
+
+describe('bonus cities', () => {
+  /** Clears the current wave with the given score, then starts the next one. */
+  function nextWaveWithScore(w: World, score: number): ReturnType<typeof drainEvents> {
+    w.wave.toLaunch = 0;
+    run(w, createRng(1), STEP_MS * 2);
+    expect(w.phase).toBe('waveCleared');
+    w.score = score;
+    drainEvents(w);
+    startNextWave(w);
+    return drainEvents(w);
+  }
+
+  it('starts with none', () => {
+    expect(createWorld()).toMatchObject({ bonusCitiesAwarded: 0, spareCities: 0 });
+  });
+
+  it('every 10,000 points rebuilds a lost city at the next wave, leftmost first', () => {
+    const w = quietWorld();
+    w.cities.forEach((c, i) => (c.alive = i !== 1 && i !== 4));
+    const events = nextWaveWithScore(w, SCORE.bonusCityEvery + 5);
+    expect(events).toContainEqual({ type: 'bonusCity', count: 1 });
+    expect(events).toContainEqual({ type: 'cityRebuilt', index: 1 });
+    expect(w.cities.map((c) => c.alive)).toEqual([true, true, true, true, false, true]);
+    expect(w.spareCities).toBe(0);
+  });
+
+  it('is earned only once per 10,000 points', () => {
+    const w = quietWorld();
+    w.cities.forEach((c, i) => (c.alive = i > 1));
+    nextWaveWithScore(w, SCORE.bonusCityEvery);
+    const events = nextWaveWithScore(w, SCORE.bonusCityEvery + 9_000);
+    expect(events.filter((e) => e.type === 'bonusCity')).toEqual([]);
+    expect(w.cities[1]?.alive).toBe(false);
+    expect(w.bonusCitiesAwarded).toBe(1);
+  });
+
+  it('several thresholds crossed at once earn several cities', () => {
+    const w = quietWorld();
+    w.cities.forEach((c, i) => (c.alive = i > 2));
+    const events = nextWaveWithScore(w, SCORE.bonusCityEvery * 2 + 1);
+    expect(events).toContainEqual({ type: 'bonusCity', count: 2 });
+    expect(w.cities.map((c) => c.alive)).toEqual([true, true, false, true, true, true]);
+  });
+
+  it('with every city standing, the bonus city is kept for a later wave', () => {
+    const w = quietWorld();
+    nextWaveWithScore(w, SCORE.bonusCityEvery);
+    expect(w.spareCities).toBe(1);
+    const [, , third] = w.cities;
+    if (third) third.alive = false;
+    const events = nextWaveWithScore(w, SCORE.bonusCityEvery + 100);
+    expect(events).toContainEqual({ type: 'cityRebuilt', index: 2 });
+    expect(w.spareCities).toBe(0);
+    expect(w.cities.every((c) => c.alive)).toBe(true);
+  });
+});

@@ -158,6 +158,8 @@ export const SCORE = {
   missileLeft: 5,
   /** End-of-wave bonus for each city still standing (arcade value). */
   citySaved: 100,
+  /** A bonus city is earned every this many points (arcade value). */
+  bonusCityEvery: 10_000,
 } as const;
 
 /** Colours for shapes drawn in code (placeholders until the M4 art pass). */
@@ -259,6 +261,8 @@ export const SCREENS = {
   promptBlinkMs: 500,
   /** How long "WAVE n" shows at the start of each wave, in milliseconds. */
   waveBannerMs: 1500,
+  /** Extra pixels between the banner's lines ("WAVE n" and "BONUS CITY"). */
+  bannerLineSpacing: 6,
   /** Dark band behind the message, so it reads clearly over the skyline. */
   panelTop: 74,
   panelHeight: 66,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SCORE } from '../../src/config/tuning';
-import { countUp, formatScore, waveBonus } from '../../src/logic/scoring';
+import { bonusCitiesEarned, countUp, formatScore, waveBonus } from '../../src/logic/scoring';
 
 describe('formatScore', () => {
   it('pads to the given number of digits', () => {
@@ -62,5 +62,19 @@ describe('countUp', () => {
   it('jumps straight to the target with no duration, and treats negative time as the start', () => {
     expect(countUp(0, 50, 0, 0)).toBe(50);
     expect(countUp(10, 50, -20, 100)).toBe(10);
+  });
+});
+
+describe('bonusCitiesEarned', () => {
+  it('earns one city per threshold reached', () => {
+    expect(bonusCitiesEarned(0)).toBe(0);
+    expect(bonusCitiesEarned(SCORE.bonusCityEvery - 1)).toBe(0);
+    expect(bonusCitiesEarned(SCORE.bonusCityEvery)).toBe(1);
+    expect(bonusCitiesEarned(SCORE.bonusCityEvery * 3 + 7)).toBe(3);
+  });
+
+  it('earns nothing for a negative score or a bad threshold', () => {
+    expect(bonusCitiesEarned(-500)).toBe(0);
+    expect(bonusCitiesEarned(50_000, 0)).toBe(0);
   });
 });
