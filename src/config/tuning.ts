@@ -122,3 +122,22 @@ export const SHAPES = {
   baseHalfWidth: 12,
   baseHeight: 8,
 } as const;
+
+/** Score and other text along the top of the screen, in Press Start 2P at its native 8 px. */
+export const HUD = {
+  fontSizePx: 8,
+  /** Gap from the screen edge, in game pixels. */
+  margin: 4,
+  /** Digits the score is padded to, arcade style. */
+  scoreDigits: 6,
+} as const;
+
+/** Explosion sprites (assets/fx). They are pooled and reused. */
+export const EFFECTS = {
+  /** Most explosions on screen at once; extra ones are skipped. */
+  poolSize: 16,
+  /** A warhead hitting open ground: centred burst, drawn slightly above the ground line. */
+  impact: { frameRate: 18, originY: 0.75 },
+  /** A city or base destroyed: a cloud rising from the ground. */
+  cityHit: { frameRate: 12, originY: 1 },
+} as const;

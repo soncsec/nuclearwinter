@@ -1,20 +1,24 @@
 import Phaser from 'phaser';
-import { IMAGES, SHEETS } from '../assets/manifest';
+import { FONT_FAMILY, IMAGES, SHEETS } from '../assets/manifest';
 import {
   COLORS,
   DEFAULT_SEED,
+  EFFECTS,
   GAME_HEIGHT,
   GAME_WIDTH,
   GROUND_Y,
+  HUD,
   MAX_STEPS_PER_FRAME,
   SHAPES,
   SKY,
   STEP_MS,
   TRAILS,
 } from '../config/tuning';
+import { EffectPool, type EffectKind } from '../entities/EffectPool';
 import { blastRadius } from '../logic/blast';
 import type { Point } from '../logic/geometry';
 import { createRng, type Rng } from '../logic/rng';
+import { formatScore } from '../logic/scoring';
 import {
   createWorld,
   drainEvents,
@@ -38,7 +42,16 @@ export interface GameSnapshot {
   blasts: number;
   /** The most recent counter-missile launch, or null before the first. */
   lastShot: { baseIndex: number; target: Point } | null;
+  /** The score as the HUD shows it. */
+  hudScore: string;
+  /** Explosion sprites playing right now. */
+  effects: number;
+  /** Explosion sprites started so far, by kind. */
+  effectsPlayed: { impact: number; cityHit: number };
 }
+
+const IMPACT: EffectKind = { key: 'impact', frames: SHEETS.impact.frames, ...EFFECTS.impact };
+const CITY_HIT: EffectKind = { key: 'cityHit', frames: SHEETS.cityHit.frames, ...EFFECTS.cityHit };
 
 /** The game screen: draws the world from src/logic and passes input to it. */
 export class GameScene extends Phaser.Scene {
@@ -50,6 +63,9 @@ export class GameScene extends Phaser.Scene {
   /** Real time not yet simulated; the world advances in fixed steps (ADR-NW03). */
   private pendingMs = 0;
   private lastShot: GameSnapshot['lastShot'] = null;
+  private effects!: EffectPool;
+  private effectsPlayed = { impact: 0, cityHit: 0 };
+  private scoreText!: Phaser.GameObjects.Text;
 
   constructor() {
     super('Game');
@@ -86,6 +102,15 @@ export class GameScene extends Phaser.Scene {
     this.defenses = this.add.graphics();
     this.drawDefenses();
     this.fx = this.add.graphics();
+    this.effects = new EffectPool(this, [IMPACT, CITY_HIT], EFFECTS.poolSize);
+    this.effectsPlayed = { impact: 0, cityHit: 0 };
+
+    this.scoreText = this.add.text(HUD.margin, HUD.margin, '', {
+      fontFamily: FONT_FAMILY,
+      fontSize: `${HUD.fontSizePx}px`,
+      color: COLORS.hud,
+    });
+    this.updateScore();
 
     // One input path for mouse and touch (ADR-NW06): fire where the pointer goes down.
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
@@ -133,6 +158,9 @@ export class GameScene extends Phaser.Scene {
       interceptors: w.interceptors.length,
       blasts: w.blasts.length,
       lastShot: this.lastShot,
+      hudScore: this.scoreText.text,
+      effects: this.effects.activeCount,
+      effectsPlayed: { ...this.effectsPlayed },
     };
   }
 
@@ -143,8 +171,18 @@ export class GameScene extends Phaser.Scene {
         case 'launch':
           this.lastShot = { baseIndex: e.baseIndex, target: { ...e.target } };
           break;
+        case 'warheadDestroyed':
+          this.updateScore();
+          break;
+        case 'impact':
+          this.playEffect(IMPACT, e.at);
+          break;
         case 'cityDestroyed':
+          this.playEffect(CITY_HIT, { x: this.world.cities[e.index]?.x ?? e.at.x, y: GROUND_Y });
+          defensesChanged = true;
+          break;
         case 'baseDestroyed':
+          this.playEffect(CITY_HIT, { x: this.world.bases[e.index]?.x ?? e.at.x, y: GROUND_Y });
           defensesChanged = true;
           break;
         default:
@@ -152,6 +190,17 @@ export class GameScene extends Phaser.Scene {
       }
     }
     if (defensesChanged) this.drawDefenses();
+  }
+
+  private playEffect(kind: EffectKind, at: Point): void {
+    if (this.effects.play(kind, at)) {
+      if (kind === IMPACT) this.effectsPlayed.impact++;
+      else this.effectsPlayed.cityHit++;
+    }
+  }
+
+  private updateScore(): void {
+    this.scoreText.setText(formatScore(this.world.score, HUD.scoreDigits));
   }
 
   /** Trails, missiles, aim markers and blasts, redrawn every frame. */
