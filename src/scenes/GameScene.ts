@@ -80,6 +80,8 @@ export class GameScene extends Phaser.Scene {
   private outLabels: Phaser.GameObjects.Text[] = [];
   /** Real time (ms) when the wave-cleared or game-over message appeared. */
   private endedAt: number | null = null;
+  /** How long taps are ignored after the message appears (the test hook can change it). */
+  private restartDelayMs: number = SCREENS.restartDelayMs;
 
   constructor() {
     super('Game');
@@ -216,6 +218,11 @@ export class GameScene extends Phaser.Scene {
     return this.canRestart();
   }
 
+  /** For the test hook: changes how long taps are ignored after the wave ends. */
+  testSetRestartDelay(ms: number): void {
+    this.restartDelayMs = ms;
+  }
+
   snapshot(): GameSnapshot {
     const w = this.world;
     return {
@@ -284,7 +291,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private canRestart(): boolean {
-    return this.endedAt !== null && this.time.now - this.endedAt >= SCREENS.restartDelayMs;
+    return this.endedAt !== null && this.time.now - this.endedAt >= this.restartDelayMs;
   }
 
   /** The "play again" prompt blinks once taps are accepted, and stays hidden before that. */

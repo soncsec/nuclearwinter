@@ -2,6 +2,8 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { openGame, snapshot, tapGame } from './helpers';
 
 const GROUND_Y = 204;
+/** SCREENS.restartDelayMs in tuning.ts. */
+const RESTART_DELAY_MS = 1000;
 const CITY_XS = [72, 104, 136, 248, 280, 312];
 
 /** Drops a fast warhead straight onto every city. */
@@ -55,13 +57,20 @@ test('losing every city ends the game and shows the score', async ({ page }) => 
 test('a tap after game over starts a fresh game, but not straight away', async ({ page }, info) => {
   await openGame(page, '?seed=7');
   await page.evaluate(() => window.__game?.holdWave());
+  // A long lockout, so "too early" doesn't depend on how fast the test machine is.
+  await page.evaluate(() => window.__game?.setRestartDelay(60_000));
   await destroyAllCities(page);
   await expect.poll(async () => (await snapshot(page)).phase).toBe('gameOver');
 
-  // A tap right away is ignored, so a shot fired as the last city falls can't skip the screen.
+  // A tap during the lockout is ignored, so a shot fired as the last city falls can't skip the
+  // screen. Wait a few frames so the tap has certainly been handled.
+  expect(await page.evaluate(() => window.__game?.canRestart())).toBe(false);
   await tapGame(page, info, 192, 100);
+  await page.waitForTimeout(300);
   expect((await snapshot(page)).phase).toBe('gameOver');
 
+  // Back to the real lockout; once it has passed, a tap starts a new game.
+  await page.evaluate((ms) => window.__game?.setRestartDelay(ms), RESTART_DELAY_MS);
   await tapToRestart(page, info);
   const snap = await snapshot(page);
   expect(snap.cities).toEqual([true, true, true, true, true, true]);
