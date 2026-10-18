@@ -25,6 +25,8 @@ export interface City {
 export interface Base {
   readonly x: number;
   alive: boolean;
+  /** Counter-missiles left this wave. */
+  ammo: number;
 }
 
 export interface Warhead {
@@ -56,6 +58,8 @@ export type Phase = 'playing' | 'waveCleared' | 'gameOver';
 
 export type GameEvent =
   | { readonly type: 'launch'; readonly baseIndex: number; readonly target: Point }
+  /** A shot was asked for but no base (or not the chosen base) could fire. */
+  | { readonly type: 'dryFire'; readonly baseIndex: number | null }
   | { readonly type: 'blast'; readonly center: Point; readonly kind: Blast['kind'] }
   | { readonly type: 'warheadDestroyed'; readonly at: Point; readonly points: number }
   | { readonly type: 'impact'; readonly at: Point }
@@ -92,7 +96,7 @@ export function createWorld(): World {
     phase: 'playing',
     score: 0,
     cities: CITIES.xs.map((x) => ({ x, alive: true })),
-    bases: BASES.xs.map((x) => ({ x, alive: true })),
+    bases: BASES.xs.map((x) => ({ x, alive: true, ammo: BASES.ammo })),
     warheads: [],
     interceptors: [],
     blasts: [],
@@ -114,13 +118,18 @@ export function aimPoint(target: Point): Point {
   };
 }
 
-/** Index of the nearest surviving base to `x`, or -1 if none. Ties go to the leftmost. */
+/** Whether a base can fire: standing, with ammo left. */
+export function canFire(base: Base): boolean {
+  return base.alive && base.ammo > 0;
+}
+
+/** Index of the nearest base that can fire, or -1 if none. Ties go to the leftmost. */
 export function nearestBase(world: World, x: number): number {
   let best = -1;
   let bestDist = Infinity;
   world.bases.forEach((base, i) => {
     const d = Math.abs(base.x - x);
-    if (base.alive && d < bestDist) {
+    if (canFire(base) && d < bestDist) {
       best = i;
       bestDist = d;
     }
@@ -128,12 +137,20 @@ export function nearestBase(world: World, x: number): number {
   return best;
 }
 
-/** Fires a counter-missile from the nearest base towards `target`. False if none could fire. */
-export function fire(world: World, target: Point): boolean {
+/**
+ * Fires a counter-missile towards `target`, from the chosen base or else the nearest one that
+ * can fire. A chosen base that is destroyed or empty does not fire (as in the arcade game).
+ * Returns false if nothing fired.
+ */
+export function fire(world: World, target: Point, chosenBase?: number): boolean {
   if (world.phase !== 'playing') return false;
-  const baseIndex = nearestBase(world, target.x);
+  const baseIndex = chosenBase ?? nearestBase(world, target.x);
   const base = world.bases[baseIndex];
-  if (!base) return false;
+  if (!base || !canFire(base)) {
+    world.events.push({ type: 'dryFire', baseIndex: chosenBase ?? null });
+    return false;
+  }
+  base.ammo--;
   const aim = aimPoint(target);
   const origin = launchPoint(base);
   world.interceptors.push({ id: world.nextId++, baseIndex, origin, target: aim, pos: origin });
@@ -229,6 +246,7 @@ function hitGround(world: World, at: Point): void {
   const base = world.bases[baseIndex];
   if (base) {
     base.alive = false;
+    base.ammo = 0;
     world.events.push({ type: 'baseDestroyed', index: baseIndex, at });
     return;
   }

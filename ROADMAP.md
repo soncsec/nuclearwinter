@@ -8,7 +8,7 @@
 |---|---|
 | M0 Setup | Done |
 | M1 Walking skeleton (one wave, released to production) | Built and released; waiting for owner acceptance |
-| M2 Core game | Not started |
+| M2 Core game | In progress |
 | M3 Enemies | Not started |
 | M4 The Nuclear Winter look | Not started |
 | M5 Mobile and launch (MVP) | Not started |
@@ -57,7 +57,7 @@
 
 **Demonstrable result:** a complete game of classic Missile Command.
 
-- [ ] M2.1 Ammo per base, nearest-base firing, empty-base handling, optional desktop base keys
+- [x] M2.1 Ammo per base, nearest-base firing, empty-base handling, optional desktop base keys
 - [ ] M2.2 Wave formula with hand-set first waves (ADR-NW05)
 - [ ] M2.3 End-of-wave bonus count-up (leftover ammo, surviving cities), bases restored
 - [ ] M2.4 Bonus city every 10,000 points

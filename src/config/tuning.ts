@@ -37,6 +37,8 @@ export const BASES = {
   /** Launch point height above the ground. */
   launchHeight: 8,
   halfWidth: 10,
+  /** Counter-missiles per base each wave (classic Missile Command: 10). */
+  ammo: 10,
 } as const;
 
 /** The player's counter-missiles. */
@@ -90,6 +92,8 @@ export const COLORS = {
   base: 0x8a7a5a,
   baseDestroyed: 0x3a3030,
   hud: '#f2e9dc',
+  ammoPip: 0x7ff6ff,
+  ammoOut: '#ff5a3c',
   messagePanel: 0x02121e,
   warheadTrail: 0xff5a3c,
   warheadHead: 0xffffff,
@@ -123,6 +127,25 @@ export const SHAPES = {
   baseHalfWidth: 12,
   baseHeight: 8,
 } as const;
+
+/** Missiles left, drawn as pips in the ground strip under each base. */
+export const AMMO_PIPS = {
+  /** Row of the pips' top edge. */
+  top: GROUND_Y + 4,
+  width: 1,
+  height: 3,
+  /** Distance from one pip's left edge to the next. */
+  pitch: 2,
+  /** Row of the "OUT" label's top edge when a standing base is empty. */
+  outLabelTop: GROUND_Y + 3,
+} as const;
+
+/** Desktop keys that fire from one base at the mouse position (ADR-NW06): left, centre, right. */
+export const BASE_KEYS: readonly (readonly string[])[] = [
+  ['a', '1'],
+  ['s', '2'],
+  ['d', '3'],
+];
 
 /** Score and other text along the top of the screen, in Press Start 2P at its native 8 px. */
 export const HUD = {
