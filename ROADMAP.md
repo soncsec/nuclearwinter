@@ -47,7 +47,7 @@
 - [x] M1.4 Six cities and three bases on screen (placeholder sprites allowed)
 - [x] M1.5 Tap or click fires a counter-missile that explodes at the target; the blast destroys warheads
 - [x] M1.6 One wave of plain warheads that destroy cities on impact; score per kill
-- [ ] M1.7 Wave end, game over and restart
+- [x] M1.7 Wave end, game over and restart
 - [ ] M1.8 Playwright: boots clean under the production CSP, whole-number scaling on desktop and phone viewports, firing and a kill through the test hook
 - [ ] M1.9 First production release with smoke test; ZAP and static check results reported
 

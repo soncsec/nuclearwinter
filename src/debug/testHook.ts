@@ -15,6 +15,10 @@ export interface TestHook {
   launchWarhead(origin: Point, target: Point, speed: number): void;
   /** Stops the wave launching warheads but keeps it open, so a test controls every one. */
   holdWave(): void;
+  /** Launches nothing more, so the wave is cleared once the sky is empty. */
+  finishWave(): void;
+  /** Whether a tap would start a new game now. */
+  canRestart(): boolean;
 }
 
 declare global {
@@ -32,6 +36,8 @@ export function installTestHook(game: Phaser.Game): void {
   window.__game = {
     launchWarhead: (origin, target, speed) => scene().testLaunchWarhead(origin, target, speed),
     holdWave: () => scene().testHoldWave(),
+    finishWave: () => scene().testFinishWave(),
+    canRestart: () => scene().testCanRestart(),
     scene: () => game.scene.getScenes(true)[0]?.scene.key ?? null,
     snapshot: () => {
       const s = game.scene.getScene('Game') as GameScene | null;

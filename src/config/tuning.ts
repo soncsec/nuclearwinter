@@ -90,6 +90,7 @@ export const COLORS = {
   base: 0x8a7a5a,
   baseDestroyed: 0x3a3030,
   hud: '#f2e9dc',
+  messagePanel: 0x02121e,
   warheadTrail: 0xff5a3c,
   warheadHead: 0xffffff,
   interceptorTrail: 0x7ff6ff,
@@ -140,4 +141,20 @@ export const EFFECTS = {
   impact: { frameRate: 18, originY: 0.75 },
   /** A city or base destroyed: a cloud rising from the ground. */
   cityHit: { frameRate: 12, originY: 1 },
+} as const;
+
+/** The wave-cleared and game-over messages. */
+export const SCREENS = {
+  /** Taps are ignored for this long after the message appears, so a late shot can't skip it. */
+  restartDelayMs: 1000,
+  /** Rows of the message's three lines, in game pixels. */
+  titleY: 84,
+  detailY: 100,
+  promptY: 124,
+  /** The prompt blinks on and off every this many milliseconds. */
+  promptBlinkMs: 500,
+  /** Dark band behind the message, so it reads clearly over the skyline. */
+  panelTop: 74,
+  panelHeight: 66,
+  panelAlpha: 0.7,
 } as const;

@@ -9,6 +9,7 @@ import {
   GROUND_Y,
   HUD,
   MAX_STEPS_PER_FRAME,
+  SCREENS,
   SHAPES,
   SKY,
   STEP_MS,
@@ -48,6 +49,8 @@ export interface GameSnapshot {
   effects: number;
   /** Explosion sprites started so far, by kind. */
   effectsPlayed: { impact: number; cityHit: number };
+  /** Lines of the wave-cleared or game-over message, empty while playing. */
+  message: string[];
 }
 
 const IMPACT: EffectKind = { key: 'impact', frames: SHEETS.impact.frames, ...EFFECTS.impact };
@@ -66,6 +69,10 @@ export class GameScene extends Phaser.Scene {
   private effects!: EffectPool;
   private effectsPlayed = { impact: 0, cityHit: 0 };
   private scoreText!: Phaser.GameObjects.Text;
+  private messageLines: Phaser.GameObjects.Text[] = [];
+  private messagePanel!: Phaser.GameObjects.Rectangle;
+  /** Real time (ms) when the wave-cleared or game-over message appeared. */
+  private endedAt: number | null = null;
 
   constructor() {
     super('Game');
@@ -82,7 +89,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.seed = seedFromUrl();
+    this.seed = seedFromUrl() ?? randomSeed();
     this.rng = createRng(this.seed);
     this.world = createWorld();
     this.pendingMs = 0;
@@ -112,9 +119,29 @@ export class GameScene extends Phaser.Scene {
     });
     this.updateScore();
 
+    this.endedAt = null;
+    this.messagePanel = this.add
+      .rectangle(0, SCREENS.panelTop, GAME_WIDTH, SCREENS.panelHeight, COLORS.messagePanel)
+      .setOrigin(0, 0)
+      .setAlpha(SCREENS.panelAlpha)
+      .setVisible(false);
+    this.messageLines = [SCREENS.titleY, SCREENS.detailY, SCREENS.promptY].map((y) =>
+      this.add
+        .text(GAME_WIDTH / 2, y, '', {
+          fontFamily: FONT_FAMILY,
+          fontSize: `${HUD.fontSizePx}px`,
+          color: COLORS.hud,
+          align: 'center',
+        })
+        .setOrigin(0.5, 0)
+        .setVisible(false),
+    );
+
     // One input path for mouse and touch (ADR-NW06): fire where the pointer goes down.
+    // After the wave ends, a tap starts a new game instead.
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      fire(this.world, { x: p.worldX, y: p.worldY });
+      if (this.world.phase === 'playing') fire(this.world, { x: p.worldX, y: p.worldY });
+      else if (this.canRestart()) this.scene.restart();
     });
   }
 
@@ -130,6 +157,7 @@ export class GameScene extends Phaser.Scene {
     if (steps === MAX_STEPS_PER_FRAME) this.pendingMs = 0;
     this.handleEvents();
     this.drawMoving();
+    this.blinkPrompt();
   }
 
   /** For the test hook: launches a warhead directly. */
@@ -143,6 +171,18 @@ export class GameScene extends Phaser.Scene {
    */
   testHoldWave(): void {
     this.world.wave.nextLaunchMs = Number.POSITIVE_INFINITY;
+  }
+
+  /**
+   * For the test hook: the wave launches nothing more, so it is cleared once the sky is empty.
+   */
+  testFinishWave(): void {
+    this.world.wave.toLaunch = 0;
+  }
+
+  /** For the test hook: whether a tap would start a new game now. */
+  testCanRestart(): boolean {
+    return this.canRestart();
   }
 
   snapshot(): GameSnapshot {
@@ -161,6 +201,7 @@ export class GameScene extends Phaser.Scene {
       hudScore: this.scoreText.text,
       effects: this.effects.activeCount,
       effectsPlayed: { ...this.effectsPlayed },
+      message: this.messageLines.filter((t) => t.visible).map((t) => t.text),
     };
   }
 
@@ -185,11 +226,39 @@ export class GameScene extends Phaser.Scene {
           this.playEffect(CITY_HIT, { x: this.world.bases[e.index]?.x ?? e.at.x, y: GROUND_Y });
           defensesChanged = true;
           break;
+        case 'waveCleared': {
+          const saved = this.world.cities.filter((c) => c.alive).length;
+          this.showMessage('WAVE CLEARED', `CITIES SAVED ${saved}`);
+          break;
+        }
+        case 'gameOver':
+          this.showMessage('GAME OVER', `SCORE ${formatScore(this.world.score, HUD.scoreDigits)}`);
+          break;
         default:
           break;
       }
     }
     if (defensesChanged) this.drawDefenses();
+  }
+
+  private showMessage(title: string, detail: string): void {
+    this.endedAt = this.time.now;
+    const prompt = this.sys.game.device.input.touch ? 'TAP TO PLAY AGAIN' : 'CLICK TO PLAY AGAIN';
+    [title, detail, prompt].forEach((line, i) => this.messageLines[i]?.setText(line));
+    this.messagePanel.setVisible(true);
+    for (const t of this.messageLines) t.setVisible(true);
+  }
+
+  private canRestart(): boolean {
+    return this.endedAt !== null && this.time.now - this.endedAt >= SCREENS.restartDelayMs;
+  }
+
+  /** The "play again" prompt blinks once taps are accepted, and stays hidden before that. */
+  private blinkPrompt(): void {
+    const prompt = this.messageLines[2];
+    if (!prompt || this.endedAt === null) return;
+    const on = this.canRestart() && Math.floor(this.time.now / SCREENS.promptBlinkMs) % 2 === 0;
+    prompt.setAlpha(on ? 1 : 0);
   }
 
   private playEffect(kind: EffectKind, at: Point): void {
@@ -255,9 +324,16 @@ export class GameScene extends Phaser.Scene {
   }
 }
 
-/** Seed from the URL (?seed=123) for repeatable runs, otherwise the default. */
-function seedFromUrl(): number {
+/** Seed from the URL (?seed=123), so a run can be repeated exactly; null when there is none. */
+function seedFromUrl(): number | null {
   const raw = new URLSearchParams(window.location.search).get('seed');
   const n = raw === null ? Number.NaN : Number.parseInt(raw, 10);
-  return Number.isFinite(n) ? n : DEFAULT_SEED;
+  return Number.isFinite(n) ? n : null;
+}
+
+/** A new seed for each game, so every game plays differently. */
+function randomSeed(): number {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return buf[0] ?? DEFAULT_SEED;
 }
