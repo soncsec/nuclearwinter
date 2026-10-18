@@ -27,6 +27,7 @@ import {
   drainEvents,
   fire,
   launchWarhead,
+  startNextWave,
   step,
   type Phase,
   type World,
@@ -36,6 +37,12 @@ import {
 export interface GameSnapshot {
   seed: number;
   phase: Phase;
+  /** The wave being played, 1 for the first. */
+  wave: number;
+  /** The wave number as the HUD shows it. */
+  hudWave: string;
+  /** The "WAVE n" banner at the start of a wave, or null when hidden. */
+  waveBanner: string | null;
   timeMs: number;
   score: number;
   cities: boolean[];
@@ -75,6 +82,10 @@ export class GameScene extends Phaser.Scene {
   private effects!: EffectPool;
   private effectsPlayed = { impact: 0, cityHit: 0 };
   private scoreText!: Phaser.GameObjects.Text;
+  private waveText!: Phaser.GameObjects.Text;
+  private waveBanner!: Phaser.GameObjects.Text;
+  /** Real time (ms) when the "WAVE n" banner should hide. */
+  private bannerUntil = 0;
   private messageLines: Phaser.GameObjects.Text[] = [];
   private messagePanel!: Phaser.GameObjects.Rectangle;
   private outLabels: Phaser.GameObjects.Text[] = [];
@@ -137,6 +148,13 @@ export class GameScene extends Phaser.Scene {
       color: COLORS.hud,
     });
     this.updateScore();
+    this.waveText = this.add
+      .text(GAME_WIDTH - HUD.margin, HUD.margin, '', {
+        fontFamily: FONT_FAMILY,
+        fontSize: `${HUD.fontSizePx}px`,
+        color: COLORS.hud,
+      })
+      .setOrigin(1, 0);
 
     this.endedAt = null;
     this.messagePanel = this.add
@@ -155,12 +173,23 @@ export class GameScene extends Phaser.Scene {
         .setOrigin(0.5, 0)
         .setVisible(false),
     );
+    this.waveBanner = this.add
+      .text(GAME_WIDTH / 2, SCREENS.titleY, '', {
+        fontFamily: FONT_FAMILY,
+        fontSize: `${HUD.fontSizePx}px`,
+        color: COLORS.hud,
+      })
+      .setOrigin(0.5, 0)
+      .setVisible(false);
+    this.showWave();
 
     // One input path for mouse and touch (ADR-NW06): fire where the pointer goes down.
-    // After the wave ends, a tap starts a new game instead.
+    // Between waves a tap starts the next wave; after game over it starts a new game.
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (this.world.phase === 'playing') fire(this.world, { x: p.worldX, y: p.worldY });
-      else if (this.canRestart()) this.scene.restart();
+      else if (!this.canRestart()) return;
+      else if (this.world.phase === 'waveCleared') this.nextWave();
+      else this.scene.restart();
     });
 
     // Desktop: a base key fires from that base at the mouse position.
@@ -191,6 +220,9 @@ export class GameScene extends Phaser.Scene {
     this.handleEvents();
     this.drawMoving();
     this.blinkPrompt();
+    if (this.waveBanner.visible && this.time.now >= this.bannerUntil) {
+      this.waveBanner.setVisible(false);
+    }
   }
 
   /** For the test hook: launches a warhead directly. */
@@ -228,6 +260,9 @@ export class GameScene extends Phaser.Scene {
     return {
       seed: this.seed,
       phase: w.phase,
+      wave: w.wave.number,
+      hudWave: this.waveText.text,
+      waveBanner: this.waveBanner.visible ? this.waveBanner.text : null,
       timeMs: w.timeMs,
       score: w.score,
       cities: w.cities.map((c) => c.alive),
@@ -269,11 +304,19 @@ export class GameScene extends Phaser.Scene {
           break;
         case 'waveCleared': {
           const saved = this.world.cities.filter((c) => c.alive).length;
-          this.showMessage('WAVE CLEARED', `CITIES SAVED ${saved}`);
+          this.showMessage(`WAVE ${e.number} CLEARED`, `CITIES SAVED ${saved}`, 'FOR NEXT WAVE');
           break;
         }
+        case 'waveStarted':
+          this.showWave();
+          defensesChanged = true;
+          break;
         case 'gameOver':
-          this.showMessage('GAME OVER', `SCORE ${formatScore(this.world.score, HUD.scoreDigits)}`);
+          this.showMessage(
+            'GAME OVER',
+            `SCORE ${formatScore(this.world.score, HUD.scoreDigits)}`,
+            'TO PLAY AGAIN',
+          );
           break;
         default:
           break;
@@ -282,12 +325,32 @@ export class GameScene extends Phaser.Scene {
     if (defensesChanged) this.drawDefenses();
   }
 
-  private showMessage(title: string, detail: string): void {
+  /** Shows a three-line message; `action` completes the prompt, e.g. "TAP FOR NEXT WAVE". */
+  private showMessage(title: string, detail: string, action: string): void {
     this.endedAt = this.time.now;
-    const prompt = this.sys.game.device.input.touch ? 'TAP TO PLAY AGAIN' : 'CLICK TO PLAY AGAIN';
+    const prompt = `${this.sys.game.device.input.touch ? 'TAP' : 'CLICK'} ${action}`;
     [title, detail, prompt].forEach((line, i) => this.messageLines[i]?.setText(line));
     this.messagePanel.setVisible(true);
     for (const t of this.messageLines) t.setVisible(true);
+  }
+
+  private hideMessage(): void {
+    this.endedAt = null;
+    this.messagePanel.setVisible(false);
+    for (const t of this.messageLines) t.setVisible(false);
+  }
+
+  private nextWave(): void {
+    if (!startNextWave(this.world)) return;
+    this.hideMessage();
+  }
+
+  /** Updates the HUD's wave number and shows "WAVE n" for a moment. */
+  private showWave(): void {
+    const label = `WAVE ${this.world.wave.number}`;
+    this.waveText.setText(label);
+    this.waveBanner.setText(label).setVisible(true);
+    this.bannerUntil = this.time.now + SCREENS.waveBannerMs;
   }
 
   private canRestart(): boolean {

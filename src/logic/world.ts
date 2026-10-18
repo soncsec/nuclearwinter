@@ -6,11 +6,12 @@ import {
   INTERCEPTOR,
   SCORE,
   WARHEAD,
-  WAVE_1,
+  type WaveSpec,
 } from '../config/tuning';
 import { blastDurationMs, blastRadius } from './blast';
 import { clamp, distance, moveToward, type Point } from './geometry';
 import type { Rng } from './rng';
+import { waveSpec } from './waves';
 
 /**
  * The whole game simulation (ADR-NW03): plain data, advanced in fixed steps by `step()`.
@@ -65,10 +66,15 @@ export type GameEvent =
   | { readonly type: 'impact'; readonly at: Point }
   | { readonly type: 'cityDestroyed'; readonly index: number; readonly at: Point }
   | { readonly type: 'baseDestroyed'; readonly index: number; readonly at: Point }
-  | { readonly type: 'waveCleared' }
+  | { readonly type: 'waveCleared'; readonly number: number }
+  | { readonly type: 'waveStarted'; readonly number: number }
   | { readonly type: 'gameOver' };
 
 export interface WaveState {
+  /** 1 for the first wave. */
+  readonly number: number;
+  /** How this wave launches its warheads. */
+  readonly spec: WaveSpec;
   /** Warheads still to launch in this wave. */
   toLaunch: number;
   /** Game time of the next launch. */
@@ -84,7 +90,7 @@ export interface World {
   warheads: Warhead[];
   interceptors: Interceptor[];
   blasts: Blast[];
-  readonly wave: WaveState;
+  wave: WaveState;
   /** Things that happened since the last `drainEvents()`. */
   events: GameEvent[];
   nextId: number;
@@ -100,10 +106,28 @@ export function createWorld(): World {
     warheads: [],
     interceptors: [],
     blasts: [],
-    wave: { toLaunch: WAVE_1.count, nextLaunchMs: WAVE_1.firstLaunchMs },
+    wave: newWave(1, 0),
     events: [],
     nextId: 1,
   };
+}
+
+function newWave(number: number, timeMs: number): WaveState {
+  const spec = waveSpec(number);
+  return { number, spec, toLaunch: spec.count, nextLaunchMs: timeMs + spec.firstLaunchMs };
+}
+
+/**
+ * Starts the next wave after one is cleared: harder launches, and standing bases reloaded.
+ * Returns false (and changes nothing) unless the wave has just been cleared.
+ */
+export function startNextWave(world: World): boolean {
+  if (world.phase !== 'waveCleared') return false;
+  world.wave = newWave(world.wave.number + 1, world.timeMs);
+  for (const b of world.bases) if (b.alive) b.ammo = BASES.ammo;
+  world.phase = 'playing';
+  world.events.push({ type: 'waveStarted', number: world.wave.number });
+  return true;
 }
 
 export function launchPoint(base: Base): Point {
@@ -185,19 +209,15 @@ export function step(world: World, rng: Rng, dtMs: number): void {
 
 function launchDueWarheads(world: World, rng: Rng): void {
   const wave = world.wave;
+  const spec = wave.spec;
   while (wave.toLaunch > 0 && world.timeMs >= wave.nextLaunchMs) {
-    const count = wave.toLaunch >= 2 && rng.next() < WAVE_1.pairChance ? 2 : 1;
+    const count = wave.toLaunch >= 2 && rng.next() < spec.pairChance ? 2 : 1;
     for (let i = 0; i < count; i++) {
       const origin = { x: rng.range(0, GAME_WIDTH), y: WARHEAD.spawnY };
-      launchWarhead(
-        world,
-        origin,
-        pickTarget(world, rng),
-        rng.range(WAVE_1.speedMin, WAVE_1.speedMax),
-      );
+      launchWarhead(world, origin, pickTarget(world, rng), rng.range(spec.speedMin, spec.speedMax));
     }
     wave.toLaunch -= count;
-    wave.nextLaunchMs += rng.range(WAVE_1.launchGapMinMs, WAVE_1.launchGapMaxMs);
+    wave.nextLaunchMs += rng.range(spec.launchGapMinMs, spec.launchGapMaxMs);
   }
 }
 
@@ -289,6 +309,6 @@ function updatePhase(world: World): void {
     world.blasts.length === 0;
   if (quiet) {
     world.phase = 'waveCleared';
-    world.events.push({ type: 'waveCleared' });
+    world.events.push({ type: 'waveCleared', number: world.wave.number });
   }
 }
