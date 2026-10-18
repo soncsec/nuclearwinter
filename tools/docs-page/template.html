@@ -1,0 +1,276 @@
+<title>Nuclear Winter Docs</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&family=Silkscreen&display=swap">
+<style>
+/* Layout: a mission-dossier header, a tab strip of the four repo docs, one centered reading column. */
+:root {
+  --bg: #f2f4f8;
+  --surface: #ffffff;
+  --ink: #131a2a;
+  --muted: #56607a;
+  --line: #d8dde8;
+  --accent: #b4470c;
+  --accent-soft: #fbe6d8;
+  --warn: #9a5a00;
+  --warn-soft: #fbefd9;
+  --code-bg: #eceff5;
+  --font-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-pixel: "Silkscreen", "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0a0f1d;
+    --surface: #111829;
+    --ink: #dde4f2;
+    --muted: #8d98b3;
+    --line: #253049;
+    --accent: #ff9a4d;
+    --accent-soft: #3a1d10;
+    --warn: #f0b860;
+    --warn-soft: #33270f;
+    --code-bg: #0d1424;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0a0f1d;
+  --surface: #111829;
+  --ink: #dde4f2;
+  --muted: #8d98b3;
+  --line: #253049;
+  --accent: #ff9a4d;
+  --accent-soft: #3a1d10;
+  --warn: #f0b860;
+  --warn-soft: #33270f;
+  --code-bg: #0d1424;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 64px;
+}
+.wrap { max-width: 860px; margin: 0 auto; }
+
+/* Header */
+header.mast {
+  display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
+  padding-block: 36px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.boom {
+  width: 128px; height: 128px; flex: none;
+  background-image: var(--boom);
+  background-size: 1024px 128px;
+  image-rendering: pixelated;
+  animation: boom 1.2s steps(8) infinite;
+}
+@keyframes boom { from { background-position: 0 0; } to { background-position: -1024px 0; } }
+@media (prefers-reduced-motion: reduce) { .boom { animation: none; background-position: -384px 0; } }
+.mast-text { display: grid; gap: 6px; min-width: 0; }
+.eyebrow {
+  font-family: var(--font-pixel); font-size: 12px; letter-spacing: .08em;
+  color: var(--accent); text-transform: uppercase;
+}
+h1.wordmark {
+  font-family: var(--font-display); font-weight: 700; font-size: clamp(30px, 6vw, 44px);
+  line-height: 1.05; margin: 0; letter-spacing: .01em; text-wrap: balance;
+}
+.meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; color: var(--muted); font-size: 14px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+  padding: 3px 10px; border-radius: 999px;
+  background: var(--warn-soft); color: var(--warn);
+}
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+/* Tabs */
+nav.tabs {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg);
+  display: flex; gap: 4px; overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 8px;
+}
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px);
+  z-index: 10; background: var(--bg);
+}
+nav.tabs button {
+  font: inherit; cursor: pointer; background: none; border: 0;
+  padding: 14px 14px 12px; color: var(--muted);
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  display: grid; gap: 0; text-align: left; white-space: nowrap;
+}
+nav.tabs button .t { font-family: var(--font-display); font-weight: 600; font-size: 16px; }
+nav.tabs button .f { font-family: var(--font-mono); font-size: 11.5px; }
+nav.tabs button:hover { color: var(--ink); }
+nav.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+nav.tabs button[aria-selected="true"] .f { color: var(--accent); }
+nav.tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
+
+/* Document body */
+article.doc { max-width: 72ch; }
+article.doc > h1:first-child { display: none; }
+article.doc h1, article.doc h2, article.doc h3 {
+  font-family: var(--font-display); line-height: 1.2; text-wrap: balance;
+}
+article.doc h2 {
+  font-size: 24px; font-weight: 700; margin: 40px 0 12px;
+  padding-top: 20px; border-top: 1px solid var(--line);
+}
+article.doc h3 { font-size: 19px; font-weight: 600; margin: 28px 0 8px; }
+article.doc p, article.doc ul, article.doc ol { margin: 0 0 14px; }
+article.doc ul, article.doc ol { padding-left: 22px; }
+article.doc li { margin: 4px 0; }
+article.doc li:has(> input[type="checkbox"]) { list-style: none; margin-left: -22px; }
+article.doc input[type="checkbox"] { accent-color: var(--accent); margin-right: 8px; transform: translateY(1px); }
+article.doc a { color: var(--accent); }
+article.doc strong { font-weight: 600; }
+article.doc em { color: var(--muted); }
+article.doc hr { border: 0; border-top: 1px dashed var(--line); margin: 32px 0; }
+article.doc blockquote {
+  margin: 16px 0 24px; padding: 12px 16px;
+  background: var(--accent-soft); border-radius: 6px;
+  font-size: 14.5px;
+}
+article.doc blockquote p { margin: 0; }
+article.doc blockquote p + p { margin-top: 4px; }
+article.doc code {
+  font-family: var(--font-mono); font-size: .88em;
+  background: var(--code-bg); padding: 1px 5px; border-radius: 4px;
+}
+article.doc pre {
+  background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px;
+  padding: 14px 16px; overflow-x: auto; font-size: 13.5px; line-height: 1.5;
+}
+article.doc pre code { background: none; padding: 0; font-size: inherit; }
+.table-scroll { overflow-x: auto; margin: 0 0 20px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+article.doc table { border-collapse: collapse; width: 100%; font-size: 14.5px; font-variant-numeric: tabular-nums; }
+article.doc th, article.doc td { text-align: left; vertical-align: top; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+article.doc tr:last-child td { border-bottom: 0; }
+article.doc th { font-weight: 600; background: var(--code-bg); font-size: 13.5px; }
+.diagram { margin: 0 0 20px; padding: 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); overflow-x: auto; text-align: center; }
+.diagram svg { max-width: 100%; height: auto; }
+.mermaid-src { display: none; }
+
+footer.foot { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <div class="boom" role="img" aria-label="Explosion sprite from the art pack"></div>
+    <div class="mast-text">
+      <span class="eyebrow">Project docs</span>
+      <h1 class="wordmark">Nuclear Winter</h1>
+      <div class="meta">
+        <span class="pill">Approved · M0 in progress</span>
+        <span>Missile Command-style arcade game for games.soncrant.com · 18 Oct 2026</span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Project documents">
+    <button role="tab" id="tab-project" data-doc="project" aria-selected="true"><span class="t">Product</span><span class="f">PROJECT.md</span></button>
+    <button role="tab" id="tab-architecture" data-doc="architecture" aria-selected="false"><span class="t">Architecture</span><span class="f">ARCHITECTURE.md</span></button>
+    <button role="tab" id="tab-roadmap" data-doc="roadmap" aria-selected="false"><span class="t">Roadmap</span><span class="f">ROADMAP.md</span></button>
+    <button role="tab" id="tab-claude" data-doc="claude" aria-selected="false"><span class="t">Dev rules</span><span class="f">CLAUDE.md</span></button>
+  </nav>
+
+  <main>
+    <article class="doc" id="doc" role="tabpanel" aria-labelledby="tab-project"></article>
+  </main>
+
+  <footer class="foot">Source files live in the project root. Art: Ansimuz Legacy Collection (CC0).</footer>
+</div>
+
+<script type="text/markdown" id="md-project">__PROJECT__</script>
+<script type="text/markdown" id="md-architecture">__ARCHITECTURE__</script>
+<script type="text/markdown" id="md-roadmap">__ROADMAP__</script>
+<script type="text/markdown" id="md-claude">__CLAUDE__</script>
+
+<!-- Pinned versions with Subresource Integrity: the browser refuses a file whose hash differs. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js" integrity="sha384-/TQbtLCAerC3jgaim+N78RZSDYV7ryeoBCVqTuzRrFec2akfBkHS7ACQ3PQhvMVi" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js" integrity="sha384-WmdflGW9aGfoBdHc4rRyWzYuAjEmDwMdGdiPNacbwfGKxBW/SO6guzuQ76qjnSlr" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js" integrity="sha384-+VfUPEb0PdtChMwmBcBmykRMDd+v6D/oFmB3rZM/puCMDYcIvF968OimRh4KQY9a" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+document.documentElement.style.setProperty('--boom', 'url(__BOOM__)');
+
+const docEl = document.getElementById('doc');
+
+// Never insert generated HTML without sanitizing it. If DOMPurify didn't load,
+// fall back to showing the escaped source text instead.
+const escapeText = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const plainText = (t) => '<pre>' + escapeText(t) + '</pre>';
+function cleanHtml(html) {
+  return window.DOMPurify ? DOMPurify.sanitize(html) : plainText(html);
+}
+function cleanSvg(svg) {
+  if (!window.DOMPurify) return '';
+  // Mermaid draws labels as HTML inside <foreignObject>, and styles with <style>.
+  return DOMPurify.sanitize(svg, {
+    USE_PROFILES: { svg: true, svgFilters: true, html: true },
+    ADD_TAGS: ['foreignObject', 'style'],
+  });
+}
+const tabs = [...document.querySelectorAll('nav.tabs button')];
+const md = id => document.getElementById('md-' + id).textContent.replace(/<\\\/script/gi, '</script');
+
+function isDark() {
+  const t = document.documentElement.getAttribute('data-theme');
+  if (t) return t === 'dark';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+let diagramCount = 0;
+async function renderDiagrams() {
+  if (!window.mermaid) return;
+  const blocks = docEl.querySelectorAll('pre > code.language-mermaid');
+  mermaid.initialize({ startOnLoad: false, theme: isDark() ? 'dark' : 'neutral', securityLevel: 'strict', fontFamily: 'IBM Plex Sans, system-ui, sans-serif' });
+  for (const code of blocks) {
+    const src = code.textContent;
+    const box = document.createElement('div');
+    box.className = 'diagram';
+    try {
+      const { svg } = await mermaid.render('diagram-' + (++diagramCount), src);
+      box.innerHTML = cleanSvg(svg);
+      code.parentElement.replaceWith(box);
+    } catch (e) { /* leave the source block visible if rendering fails */ }
+  }
+}
+
+function show(id, push) {
+  tabs.forEach(b => b.setAttribute('aria-selected', String(b.dataset.doc === id)));
+  docEl.setAttribute('aria-labelledby', 'tab-' + id);
+  docEl.innerHTML = window.marked ? cleanHtml(marked.parse(md(id), { gfm: true })) : plainText(md(id));
+  docEl.querySelectorAll('table').forEach(t => {
+    const w = document.createElement('div'); w.className = 'table-scroll';
+    t.replaceWith(w); w.appendChild(t);
+  });
+  renderDiagrams();
+  if (push) { try { history.replaceState(null, '', '#' + id); } catch (e) {} }
+}
+
+tabs.forEach(b => b.addEventListener('click', () => { show(b.dataset.doc, true); window.scrollTo({ top: 0 }); }));
+document.querySelector('nav.tabs').addEventListener('keydown', e => {
+  const i = tabs.findIndex(b => b.getAttribute('aria-selected') === 'true');
+  let n = null;
+  if (e.key === 'ArrowRight') n = (i + 1) % tabs.length;
+  if (e.key === 'ArrowLeft') n = (i - 1 + tabs.length) % tabs.length;
+  if (n !== null) { tabs[n].focus(); show(tabs[n].dataset.doc, true); }
+});
+
+const start = (location.hash || '').slice(1);
+show(tabs.some(b => b.dataset.doc === start) ? start : 'project', false);
+</script>
