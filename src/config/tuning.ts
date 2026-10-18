@@ -3,16 +3,6 @@
 export const GAME_WIDTH = 384;
 export const GAME_HEIGHT = 216;
 
-/** The placeholder player: a box moved with the arrow keys or WASD. */
-export const PLAYER = {
-  size: 16,
-  color: 0x2de2e6,
-  /** Pixels per second. */
-  speed: 120,
-  /** Starting position as a fraction of the screen height. */
-  startY: 0.85,
-} as const;
-
 /** Seed for the random number generator; override with ?seed= in the URL. */
 export const DEFAULT_SEED = 1;
 
@@ -88,4 +78,31 @@ export const WAVE_1 = {
 /** Points. */
 export const SCORE = {
   warhead: 25,
+} as const;
+
+/** Colours for shapes drawn in code (placeholders until the M4 art pass). */
+export const COLORS = {
+  ground: 0x1a1410,
+  groundEdge: 0x4a3a2a,
+  city: 0x6fd3ff,
+  cityWindow: 0xfff3b0,
+  rubble: 0x3a3030,
+  base: 0x8a7a5a,
+  baseDestroyed: 0x3a3030,
+  hud: '#f2e9dc',
+} as const;
+
+/** How cities and bases are drawn: pixel offsets from their centre on the ground. */
+export const SHAPES = {
+  /** [x offset, width, height] of each building in a city. */
+  cityBlocks: [
+    [-9, 4, 6],
+    [-5, 4, 10],
+    [-1, 3, 7],
+    [2, 4, 12],
+    [6, 4, 8],
+  ],
+  rubbleHeight: 2,
+  baseHalfWidth: 12,
+  baseHeight: 8,
 } as const;
