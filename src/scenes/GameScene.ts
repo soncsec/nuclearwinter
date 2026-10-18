@@ -36,6 +36,20 @@ import {
 } from '../logic/world';
 import { browserStore, drawBackdrop } from './ui';
 
+/** Cheap counts for the dev debug overlay, read every frame. */
+export interface DebugStats {
+  wave: number;
+  paused: boolean;
+  /** Warheads still to launch this wave. */
+  toLaunch: number;
+  warheads: number;
+  interceptors: number;
+  blasts: number;
+  /** Explosion sprites playing, and the pool's size. */
+  effects: number;
+  effectPool: number;
+}
+
 /** Read-only view of the game state, used by the e2e test hook. */
 export interface GameSnapshot {
   seed: number;
@@ -304,6 +318,21 @@ export class GameScene extends Phaser.Scene {
   testSetScore(score: number): void {
     this.world.score = score;
     this.updateScore();
+  }
+
+  /** For the dev debug overlay: counts without building a full snapshot. */
+  debugStats(): DebugStats {
+    const w = this.world;
+    return {
+      wave: w.wave.number,
+      paused: this.paused,
+      toLaunch: w.wave.toLaunch,
+      warheads: w.warheads.length,
+      interceptors: w.interceptors.length,
+      blasts: w.blasts.length,
+      effects: this.effects.activeCount,
+      effectPool: EFFECTS.poolSize,
+    };
   }
 
   snapshot(): GameSnapshot {

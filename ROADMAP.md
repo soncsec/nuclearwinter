@@ -63,7 +63,7 @@
 - [x] M2.4 Bonus city every 10,000 points
 - [x] M2.5 High score saved in localStorage
 - [x] M2.6 Title screen, pause and resume, game-over screen
-- [ ] M2.7 Dev-only debug overlay (wave, counts, fps)
+- [x] M2.7 Dev-only debug overlay (wave, counts, fps)
 - [ ] M2.8 Daily challenge: same waves for everyone each day (seed from the UTC date), separate best score
 
 **Acceptance criteria:** a full game from title to game over and back; scoring rules unit tested; high score survives a reload.

@@ -40,6 +40,11 @@ window.addEventListener('resize', () => {
   if (game.scale.zoom !== zoom) game.scale.setZoom(zoom);
 });
 
+// Dev and e2e builds get the debug overlay (?debug, or the backquote key); production does not.
+if (import.meta.env.MODE !== 'production') {
+  void import('./debug/DebugOverlay').then(({ installDebugOverlay }) => installDebugOverlay(game));
+}
+
 // The e2e build adds a test hook. Vite replaces MODE at build time, so this
 // branch and the hook module are left out of the normal build entirely.
 if (import.meta.env.MODE === 'e2e') {
