@@ -17,3 +17,26 @@ body {
 canvas {
   image-rendering: pixelated;
 }
+
+/* Landscape only (ADR-NW02): touch devices held upright get a message instead of the game. */
+#rotate {
+  display: none;
+}
+
+@media (orientation: portrait) and (pointer: coarse) {
+  #game {
+    visibility: hidden;
+  }
+
+  #rotate {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    color: #f2e9dc;
+    font: 16px/1.5 monospace;
+    text-align: center;
+  }
+}

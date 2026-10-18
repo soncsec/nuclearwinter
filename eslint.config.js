@@ -14,6 +14,13 @@ export default tseslint.config(
       'no-eval': 'error',
       'no-implied-eval': 'error',
       'no-new-func': 'error',
+      // Never build HTML from strings: it is the usual way script injection gets in.
+      'no-restricted-properties': [
+        'error',
+        { property: 'innerHTML', message: 'Use textContent and DOM APIs instead.' },
+        { property: 'outerHTML', message: 'Use textContent and DOM APIs instead.' },
+        { property: 'insertAdjacentHTML', message: 'Use DOM APIs instead.' },
+      ],
     },
   },
   {

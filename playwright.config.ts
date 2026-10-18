@@ -18,6 +18,17 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    {
+      // A landscape phone (ADR-NW02): small CSS viewport, 3x pixel ratio, touch.
+      name: 'phone',
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 844, height: 390 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+      },
+    },
   ],
   webServer: {
     // The e2e build is the normal build plus the test hook (src/debug/testHook.ts).

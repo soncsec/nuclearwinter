@@ -1,6 +1,7 @@
 /** All gameplay numbers live here so they can be tuned in one place. */
-export const GAME_WIDTH = 256;
-export const GAME_HEIGHT = 320;
+/** Native resolution in game pixels (ADR-NW02). */
+export const GAME_WIDTH = 384;
+export const GAME_HEIGHT = 216;
 
 /** The placeholder player: a box moved with the arrow keys or WASD. */
 export const PLAYER = {
