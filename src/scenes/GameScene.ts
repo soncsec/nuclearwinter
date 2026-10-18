@@ -21,6 +21,7 @@ import { EffectPool, type EffectKind } from '../entities/EffectPool';
 import { blastRadius } from '../logic/blast';
 import type { Point } from '../logic/geometry';
 import { createRng, type Rng } from '../logic/rng';
+import { loadHighScore, saveHighScore, type KeyValueStore } from '../logic/highScore';
 import { countUp, formatScore } from '../logic/scoring';
 import {
   createWorld,
@@ -60,6 +61,8 @@ export interface GameSnapshot {
   lastShot: { baseIndex: number; target: Point } | null;
   /** The score as the HUD shows it. */
   hudScore: string;
+  /** The high score as the HUD shows it. */
+  hudHigh: string;
   /** Explosion sprites playing right now. */
   effects: number;
   /** Explosion sprites started so far, by kind. */
@@ -84,6 +87,9 @@ export class GameScene extends Phaser.Scene {
   private effects!: EffectPool;
   private effectsPlayed = { impact: 0, cityHit: 0 };
   private scoreText!: Phaser.GameObjects.Text;
+  private highText!: Phaser.GameObjects.Text;
+  /** The best score saved in this browser when this game started. */
+  private highScore = 0;
   private waveText!: Phaser.GameObjects.Text;
   private waveBanner!: Phaser.GameObjects.Text;
   /** Real time (ms) when the "WAVE n" banner should hide. */
@@ -152,6 +158,14 @@ export class GameScene extends Phaser.Scene {
       fontSize: `${HUD.fontSizePx}px`,
       color: COLORS.hud,
     });
+    this.highScore = loadHighScore(browserStore());
+    this.highText = this.add
+      .text(GAME_WIDTH / 2, HUD.margin, '', {
+        fontFamily: FONT_FAMILY,
+        fontSize: `${HUD.fontSizePx}px`,
+        color: COLORS.hud,
+      })
+      .setOrigin(0.5, 0);
     this.updateScore();
     this.waveText = this.add
       .text(GAME_WIDTH - HUD.margin, HUD.margin, '', {
@@ -292,6 +306,7 @@ export class GameScene extends Phaser.Scene {
       blasts: w.blasts.length,
       lastShot: this.lastShot,
       hudScore: this.scoreText.text,
+      hudHigh: this.highText.text,
       effects: this.effects.activeCount,
       effectsPlayed: { ...this.effectsPlayed },
       message: this.messageLines.filter((t) => t.visible).map((t) => t.text),
@@ -321,6 +336,8 @@ export class GameScene extends Phaser.Scene {
           defensesChanged = true;
           break;
         case 'waveCleared': {
+          // Saved at every wave, so closing the tab mid-game keeps the record.
+          saveHighScore(browserStore(), this.world.score);
           const b = e.bonus;
           this.showMessage(
             `WAVE ${e.number} CLEARED`,
@@ -346,14 +363,18 @@ export class GameScene extends Phaser.Scene {
         case 'cityRebuilt':
           defensesChanged = true;
           break;
-        case 'gameOver':
+        case 'gameOver': {
+          saveHighScore(browserStore(), this.world.score);
+          const newBest = this.world.score > this.highScore;
           this.showMessage(
             'GAME OVER',
             `SCORE ${formatScore(this.world.score, HUD.scoreDigits)}`,
-            '',
+            newBest ? 'NEW HIGH SCORE' : '',
             'TO PLAY AGAIN',
           );
+          this.updateScore();
           break;
+        }
         default:
           break;
       }
@@ -368,6 +389,8 @@ export class GameScene extends Phaser.Scene {
   private showMessage(title: string, detail: string, detail2: string, action: string): void {
     this.endedAt = this.time.now;
     const prompt = `${this.sys.game.device.input.touch ? 'TAP' : 'CLICK'} ${action}`;
+    // The message and the "WAVE n" banner share the same rows, so the banner gives way.
+    this.waveBanner.setVisible(false);
     this.messagePanel.setVisible(true);
     [title, detail, detail2, prompt].forEach((line, i) =>
       this.messageLines[i]?.setText(line).setVisible(line !== ''),
@@ -380,7 +403,7 @@ export class GameScene extends Phaser.Scene {
     const { scoreBefore, bonus, startedAt } = this.tally;
     const shown = countUp(0, bonus, this.time.now - startedAt, SCREENS.bonusCountMs);
     this.messageLines[2]?.setText(`BONUS ${shown}`);
-    this.scoreText.setText(formatScore(scoreBefore + shown, HUD.scoreDigits));
+    this.showScore(scoreBefore + shown);
     if (shown === bonus) this.tally = null;
   }
 
@@ -433,7 +456,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateScore(): void {
-    this.scoreText.setText(formatScore(this.world.score, HUD.scoreDigits));
+    this.showScore(this.world.score);
+  }
+
+  /** Shows `score`, and the high score, which rises live once the score passes it. */
+  private showScore(score: number): void {
+    this.scoreText.setText(formatScore(score, HUD.scoreDigits));
+    this.highText.setText(`HI ${formatScore(Math.max(this.highScore, score), HUD.scoreDigits)}`);
   }
 
   /** Trails, missiles, aim markers and blasts, redrawn every frame. */
@@ -512,4 +541,13 @@ function randomSeed(): number {
   const buf = new Uint32Array(1);
   crypto.getRandomValues(buf);
   return buf[0] ?? DEFAULT_SEED;
+}
+
+/** This browser's localStorage, or null where it is blocked (some private modes throw). */
+function browserStore(): KeyValueStore | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
 }
