@@ -29,6 +29,17 @@ export default defineConfig({
         hasTouch: true,
       },
     },
+    {
+      // A landscape tablet: larger CSS viewport, 2x pixel ratio, touch.
+      name: 'tablet',
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1180, height: 820 },
+        deviceScaleFactor: 2,
+        isMobile: true,
+        hasTouch: true,
+      },
+    },
   ],
   webServer: {
     // The e2e build is the normal build plus the test hook (src/debug/testHook.ts).
