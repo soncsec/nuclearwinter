@@ -64,9 +64,10 @@
 - [x] M2.5 High score saved in localStorage
 - [x] M2.6 Title screen, pause and resume, game-over screen
 - [x] M2.7 Dev-only debug overlay (wave, counts, fps)
-- [ ] M2.8 Daily challenge: same waves for everyone each day (seed from the UTC date), separate best score
+- [ ] M2.8 Wave score multiplier: kill points and the end-of-wave bonus rise every two waves up to a cap (approved 2026-10-18)
+- [ ] M2.9 WebKit added to the Playwright matrix, desktop and phone (approved 2026-10-18)
 
-**Acceptance criteria:** a full game from title to game over and back; scoring rules unit tested; high score survives a reload.
+**Acceptance criteria:** a full game from title to game over and back; scoring rules (including the multiplier) unit tested; high score survives a reload; CI runs WebKit.
 
 ## M3 — Enemies
 
@@ -76,8 +77,9 @@
 - [ ] M3.2 Bombers and satellites that cross the sky and launch warheads
 - [ ] M3.3 Smart bombs that steer around blasts
 - [ ] M3.4 Enemy mix added to the wave formula, with their point values
+- [ ] M3.5 Daily challenge: same waves for everyone each day (seed from the UTC date), separate best score (moved from M2 on 2026-10-18, so the enemy roster is final first)
 
-**Acceptance criteria:** each enemy's behaviour unit tested; each appears by the wave set in `tuning.ts`; owner play-test.
+**Acceptance criteria:** each enemy's behaviour unit tested; each appears by the wave set in `tuning.ts`; the daily challenge gives the same waves for the same date; owner play-test.
 
 ## M4 — The Nuclear Winter look
 
@@ -101,9 +103,8 @@
 - [ ] M5.1 Touch tuning on real phones and tablets (target size, no page scrolling or zooming)
 - [ ] M5.2 Automatic quality setting and frame-rate check on phones
 - [ ] M5.3 Load-time check (under 2 seconds on the local network)
-- [ ] M5.4 Portal card image (256×192) and status `coming-soon`, then `live` after release (portal PRs)
+- [x] M5.4 Portal card image (256×192) and status `live` (portal PR #25, merged and released 2026-10-18 at the owner's request)
 - [ ] M5.5 Release 1.0 to production; production check workflow passes
-- [ ] M5.6 Install as an app and play offline: web app manifest and a service worker that caches only this game's own files. Needs a new ADR and a security review (cache scope, updates, no third-party requests) approved by the owner before release.
 
 **Acceptance criteria:** every non-functional requirement in PROJECT.md met and recorded; owner signs off the MVP.
 

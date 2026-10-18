@@ -34,7 +34,7 @@ Read `PROJECT.md` (scope), `ARCHITECTURE.md` (decisions), and `ROADMAP.md` (curr
 
 ## Git workflow
 
-- Never commit or push directly to `main`, and never merge PRs. The owner merges.
+- Never commit or push directly to `main`, and never merge PRs. The owner merges: they approve a PR and enable auto-merge on it (repository setting on since 2026-10-18), and GitHub merges it when CI passes. Never enable auto-merge yourself.
 - One task per branch, named `feature/<roadmap-id>-<short-name>` (e.g. `feature/M1.5-player-movement`).
 - Small PRs, one roadmap task each. The PR description includes:
   - a summary of the change (what and why)
