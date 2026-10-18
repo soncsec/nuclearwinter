@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { FONT_FAMILY, IMAGES, SHEETS } from '../assets/manifest';
 import {
+  AMMO_PIPS,
+  BASE_KEYS,
   COLORS,
   DEFAULT_SEED,
   EFFECTS,
@@ -38,6 +40,10 @@ export interface GameSnapshot {
   score: number;
   cities: boolean[];
   bases: boolean[];
+  /** Missiles left at each base. */
+  ammo: number[];
+  /** Whether each base shows its "OUT" label. */
+  outLabels: boolean[];
   warheads: Point[];
   interceptors: number;
   blasts: number;
@@ -71,6 +77,7 @@ export class GameScene extends Phaser.Scene {
   private scoreText!: Phaser.GameObjects.Text;
   private messageLines: Phaser.GameObjects.Text[] = [];
   private messagePanel!: Phaser.GameObjects.Rectangle;
+  private outLabels: Phaser.GameObjects.Text[] = [];
   /** Real time (ms) when the wave-cleared or game-over message appeared. */
   private endedAt: number | null = null;
 
@@ -107,6 +114,16 @@ export class GameScene extends Phaser.Scene {
     this.add.rectangle(0, GROUND_Y, GAME_WIDTH, 1, COLORS.groundEdge).setOrigin(0, 0);
 
     this.defenses = this.add.graphics();
+    this.outLabels = this.world.bases.map((b) =>
+      this.add
+        .text(b.x, AMMO_PIPS.outLabelTop, 'OUT', {
+          fontFamily: FONT_FAMILY,
+          fontSize: `${HUD.fontSizePx}px`,
+          color: COLORS.ammoOut,
+        })
+        .setOrigin(0.5, 0)
+        .setVisible(false),
+    );
     this.drawDefenses();
     this.fx = this.add.graphics();
     this.effects = new EffectPool(this, [IMPACT, CITY_HIT], EFFECTS.poolSize);
@@ -142,6 +159,15 @@ export class GameScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (this.world.phase === 'playing') fire(this.world, { x: p.worldX, y: p.worldY });
       else if (this.canRestart()) this.scene.restart();
+    });
+
+    // Desktop: a base key fires from that base at the mouse position.
+    this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
+      if (e.repeat || this.world.phase !== 'playing') return;
+      const baseIndex = BASE_KEYS.findIndex((keys) => keys.includes(e.key.toLowerCase()));
+      if (baseIndex < 0) return;
+      const p = this.input.activePointer;
+      fire(this.world, { x: p.worldX, y: p.worldY }, baseIndex);
     });
   }
 
@@ -194,6 +220,8 @@ export class GameScene extends Phaser.Scene {
       score: w.score,
       cities: w.cities.map((c) => c.alive),
       bases: w.bases.map((b) => b.alive),
+      ammo: w.bases.map((b) => b.ammo),
+      outLabels: this.outLabels.map((t) => t.visible),
       warheads: w.warheads.map((h) => ({ ...h.pos })),
       interceptors: w.interceptors.length,
       blasts: w.blasts.length,
@@ -211,6 +239,7 @@ export class GameScene extends Phaser.Scene {
       switch (e.type) {
         case 'launch':
           this.lastShot = { baseIndex: e.baseIndex, target: { ...e.target } };
+          defensesChanged = true;
           break;
         case 'warheadDestroyed':
           this.updateScore();
@@ -320,6 +349,18 @@ export class GameScene extends Phaser.Scene {
         base.x,
         GROUND_Y - h,
       );
+      this.drawAmmo(g, base.x, base.ammo);
+    }
+    this.world.bases.forEach((b, i) => this.outLabels[i]?.setVisible(b.alive && b.ammo === 0));
+  }
+
+  /** One pip per missile left, centred under the base. */
+  private drawAmmo(g: Phaser.GameObjects.Graphics, x: number, ammo: number): void {
+    if (ammo <= 0) return;
+    const left = Math.round(x - (ammo * AMMO_PIPS.pitch - (AMMO_PIPS.pitch - AMMO_PIPS.width)) / 2);
+    g.fillStyle(COLORS.ammoPip);
+    for (let i = 0; i < ammo; i++) {
+      g.fillRect(left + i * AMMO_PIPS.pitch, AMMO_PIPS.top, AMMO_PIPS.width, AMMO_PIPS.height);
     }
   }
 }

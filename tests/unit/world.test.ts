@@ -95,6 +95,73 @@ describe('firing', () => {
   });
 });
 
+describe('ammo', () => {
+  it('each base starts the wave with a full load', () => {
+    expect(createWorld().bases.map((b) => b.ammo)).toEqual([BASES.ammo, BASES.ammo, BASES.ammo]);
+  });
+
+  it('each shot uses one missile from the base that fired', () => {
+    const w = quietWorld();
+    fire(w, { x: 10, y: 50 });
+    expect(w.bases.map((b) => b.ammo)).toEqual([BASES.ammo - 1, BASES.ammo, BASES.ammo]);
+  });
+
+  it('an empty base is skipped for the next nearest one', () => {
+    const w = quietWorld();
+    for (let i = 0; i < BASES.ammo; i++) expect(fire(w, { x: 10, y: 50 })).toBe(true);
+    expect(w.bases[0]?.ammo).toBe(0);
+    fire(w, { x: 10, y: 50 });
+    expect(w.interceptors.at(-1)?.baseIndex).toBe(1);
+  });
+
+  it('with every base empty nothing fires, and the dry fire is reported', () => {
+    const w = quietWorld();
+    w.bases.forEach((b) => (b.ammo = 0));
+    drainEvents(w);
+    expect(fire(w, { x: 100, y: 50 })).toBe(false);
+    expect(w.interceptors).toEqual([]);
+    expect(drainEvents(w)).toEqual([{ type: 'dryFire', baseIndex: null }]);
+  });
+
+  it('a destroyed base loses its missiles', () => {
+    const w = quietWorld();
+    const x = BASES.xs[1] ?? 0;
+    launchWarhead(w, { x, y: GROUND_Y - 1 }, { x, y: GROUND_Y }, 600);
+    run(w, createRng(1), 100);
+    expect(w.bases[1]).toMatchObject({ alive: false, ammo: 0 });
+  });
+});
+
+describe('choosing a base', () => {
+  it('fires from the chosen base even when another is nearer', () => {
+    const w = quietWorld();
+    expect(fire(w, { x: 10, y: 50 }, 2)).toBe(true);
+    expect(w.interceptors[0]?.baseIndex).toBe(2);
+    expect(w.bases[2]?.ammo).toBe(BASES.ammo - 1);
+  });
+
+  it('a chosen base that is empty or destroyed does not fire, and no other base fires for it', () => {
+    const w = quietWorld();
+    const [left, centre] = w.bases;
+    if (!left || !centre) throw new Error('bases missing');
+    left.ammo = 0;
+    centre.alive = false;
+    drainEvents(w);
+    expect(fire(w, { x: 10, y: 50 }, 0)).toBe(false);
+    expect(fire(w, { x: 10, y: 50 }, 1)).toBe(false);
+    expect(w.interceptors).toEqual([]);
+    expect(drainEvents(w)).toEqual([
+      { type: 'dryFire', baseIndex: 0 },
+      { type: 'dryFire', baseIndex: 1 },
+    ]);
+  });
+
+  it('an unknown base number fires nothing', () => {
+    const w = quietWorld();
+    expect(fire(w, { x: 10, y: 50 }, 7)).toBe(false);
+  });
+});
+
 describe('blasts and warheads', () => {
   it('a blast destroys a warhead inside it, scores, and leaves a chain blast', () => {
     const w = quietWorld();
