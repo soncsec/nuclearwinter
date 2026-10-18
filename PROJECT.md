@@ -27,7 +27,7 @@ Casual players visiting `games.soncrant.com`, on any current browser and device.
 | Defenses | 6 cities and 3 missile bases. Each base has limited ammo per wave and is restored between waves. |
 | Enemies | Introduced as waves progress: plain warheads, warheads that split mid-flight (MIRVs), bombers and satellites that launch missiles, and smart bombs that dodge blasts |
 | Waves | Endless. The first few are tuned by hand, then a formula raises warhead count, speed and the enemy mix. |
-| Scoring | Points per kill; end-of-wave bonus for leftover ammo and surviving cities; a bonus city every 10,000 points. Game over when all cities are lost. High score in localStorage. |
+| Scoring | Points per kill, multiplied by a wave multiplier that rises every two waves up to a cap (as in the arcade game); end-of-wave bonus for leftover ammo and surviving cities, multiplied the same way; a bonus city every 10,000 points. Game over when all cities are lost. High score in localStorage. |
 | Theme | Falling ash and a darkening sky that thicken as cities are lost; a nuclear flash when a city is hit, kept under the photosensitive-safe limit; a "reduce flashing" setting |
 | Look | Pixel art at native resolution with whole-number scaling, plus glowing missile trails, bloom where performance allows, particles and screen shake |
 | Screens | Title, game, wave-bonus tally, game over with high score, pause |
@@ -35,13 +35,13 @@ Casual players visiting `games.soncrant.com`, on any current browser and device.
 | Art | Shared art pack (`legacy/`, CC0): city skylines (Warped Synth City / Urban Landscape), explosion packs, space or night-sky backgrounds. Gaps (bases) are filled with pack props or our own simple pixel sprites. |
 | Font | Press Start 2P (SIL OFL 1.1), as in Star Destroyer and the portal |
 | Daily challenge | A mode where everyone gets the same waves each day (seed from the UTC date), with its own best score saved on the device |
-| Vibration | Short phone vibration when a city is hit, on devices that support it; off when "reduce flashing" is on or vibration is turned off in settings |
-| Install and offline | Installable as an app (web app manifest) and playable offline (service worker caching only this game's own files). Security-reviewed before release. |
+| Vibration | Short phone vibration when a city is hit, on devices that support it (Android browsers; Safari has no Vibration API); off when "reduce flashing" is on or vibration is turned off in settings |
 
 ### Out of scope for 1.0
 
 - Audio. It is planned for after the MVP (milestone M6); the approach (generated sound effects or a CC0 pack) will be decided with the owner then.
 - Online leaderboards, accounts, multiplayer, analytics.
+- Installing as an app and offline play (dropped 2026-10-18: service workers need HTTPS and the games host stays on HTTP, ADR-010).
 - Portrait-mode layout.
 
 ## 5. Constraints (shared by every Soncrant Arcade game)
@@ -73,7 +73,13 @@ A complete, replayable game, live on the portal, playable on desktop, phone and 
 | 2026-10-18 | Press Start 2P font, reused from Star Destroyer |
 | 2026-10-18 | "Reduce flashing" setting; city-hit flash kept under the safe limit |
 | 2026-10-18 | Standing approval for production releases after each merge |
-| 2026-10-18 | Added to scope: daily challenge, phone vibration, install as an app with offline play |
+| 2026-10-18 | Added to scope: daily challenge, phone vibration |
+| 2026-10-18 | Install as an app and offline play: dropped (would need HTTPS; the games host stays on HTTP) |
+| 2026-10-18 | Wave score multiplier added to the scoring rules |
+| 2026-10-18 | Daily challenge moved after the enemies (M3), so the roster is final before the waves are fixed by date |
+| 2026-10-18 | WebKit added to the Playwright matrix (iPhones only run WebKit) |
+| 2026-10-18 | GitHub auto-merge turned on: the owner approves and enables it per PR; the PR merges when CI passes |
+| 2026-10-18 | Portal releases for this game's card need no approval per release |
 
 ## 9. Open questions
 

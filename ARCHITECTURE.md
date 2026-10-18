@@ -110,7 +110,7 @@ src/
 public/assets/         art copied from legacy/ (listed in CREDITS.md) and the font
 tests/
 ├── unit/              Vitest, 80% coverage floor on src/logic
-├── e2e/               Playwright in Chromium and Firefox: desktop and phone viewports, production CSP
+├── e2e/               Playwright in Chromium, Firefox and WebKit: desktop, phone and tablet viewports, production CSP
 └── release/           release scripts against a fake server
 scripts/               release.sh, release-remote.sh, smoke_test.py, zap_check.py, check_repo.py
 tools/docs-page/       builds the docs page from the four docs
@@ -124,7 +124,7 @@ tools/docs-page/       builds the docs page from the four docs
 
 ## 5. Delivery pipeline
 
-- **PR:** repo checks, gitleaks, `npm audit`, format, lint, typecheck, unit tests with coverage, release-script tests, build, Playwright (Chromium and Firefox), CodeQL.
+- **PR:** repo checks, gitleaks, `npm audit`, format, lint, typecheck, unit tests with coverage, release-script tests, build, Playwright (Chromium, Firefox and WebKit), CodeQL.
 - **Merge to `main`:** deploy to GitHub Pages staging, then the ZAP baseline scan.
 - **Release:** `scripts/release.sh deploy` from the dev machine (standing owner approval after each merge), with smoke test and automatic rollback.
 
