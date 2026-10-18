@@ -11,7 +11,7 @@ import {
 import { blastDurationMs, blastRadius } from './blast';
 import { clamp, distance, moveToward, type Point } from './geometry';
 import type { Rng } from './rng';
-import { waveBonus, type WaveBonus } from './scoring';
+import { bonusCitiesEarned, waveBonus, type WaveBonus } from './scoring';
 import { waveSpec } from './waves';
 
 /**
@@ -69,6 +69,9 @@ export type GameEvent =
   | { readonly type: 'baseDestroyed'; readonly index: number; readonly at: Point }
   | { readonly type: 'waveCleared'; readonly number: number; readonly bonus: WaveBonus }
   | { readonly type: 'waveStarted'; readonly number: number }
+  /** New bonus cities were earned (`count`), banked until a city needs rebuilding. */
+  | { readonly type: 'bonusCity'; readonly count: number }
+  | { readonly type: 'cityRebuilt'; readonly index: number }
   | { readonly type: 'gameOver' };
 
 export interface WaveState {
@@ -92,6 +95,10 @@ export interface World {
   interceptors: Interceptor[];
   blasts: Blast[];
   wave: WaveState;
+  /** Bonus cities credited so far (one per `SCORE.bonusCityEvery` points). */
+  bonusCitiesAwarded: number;
+  /** Bonus cities earned but not yet needed; each rebuilds a lost city at the next wave. */
+  spareCities: number;
   /** Things that happened since the last `drainEvents()`. */
   events: GameEvent[];
   nextId: number;
@@ -108,6 +115,8 @@ export function createWorld(): World {
     interceptors: [],
     blasts: [],
     wave: newWave(1, 0),
+    bonusCitiesAwarded: 0,
+    spareCities: 0,
     events: [],
     nextId: 1,
   };
@@ -119,7 +128,9 @@ function newWave(number: number, timeMs: number): WaveState {
 }
 
 /**
- * Starts the next wave after one is cleared: harder launches, and every base rebuilt and reloaded.
+ * Starts the next wave after one is cleared: harder launches, every base rebuilt and reloaded,
+ * and bonus cities (one per `SCORE.bonusCityEvery` points) rebuilding lost cities, leftmost
+ * first. Bonus cities not needed yet are kept for later waves.
  * Returns false (and changes nothing) unless the wave has just been cleared.
  */
 export function startNextWave(world: World): boolean {
@@ -131,6 +142,19 @@ export function startNextWave(world: World): boolean {
   }
   world.phase = 'playing';
   world.events.push({ type: 'waveStarted', number: world.wave.number });
+
+  const earned = bonusCitiesEarned(world.score) - world.bonusCitiesAwarded;
+  if (earned > 0) {
+    world.bonusCitiesAwarded += earned;
+    world.spareCities += earned;
+    world.events.push({ type: 'bonusCity', count: earned });
+  }
+  world.cities.forEach((city, index) => {
+    if (city.alive || world.spareCities === 0) return;
+    city.alive = true;
+    world.spareCities--;
+    world.events.push({ type: 'cityRebuilt', index });
+  });
   return true;
 }
 

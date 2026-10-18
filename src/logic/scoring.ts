@@ -28,6 +28,12 @@ export function waveBonus(
   };
 }
 
+/** How many bonus cities a score has earned in total: one per `every` points. */
+export function bonusCitiesEarned(score: number, every: number = SCORE.bonusCityEvery): number {
+  if (every <= 0 || score <= 0) return 0;
+  return Math.floor(score / every);
+}
+
 /**
  * The value shown while a number counts up from `from` to `to` over `durationMs`:
  * whole numbers only, never past `to`.

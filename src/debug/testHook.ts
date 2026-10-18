@@ -21,6 +21,8 @@ export interface TestHook {
   canRestart(): boolean;
   /** Changes how long taps are ignored after the wave ends, so tests don't race the clock. */
   setRestartDelay(ms: number): void;
+  /** Sets the score, e.g. to just below a bonus city. */
+  setScore(score: number): void;
 }
 
 declare global {
@@ -41,6 +43,7 @@ export function installTestHook(game: Phaser.Game): void {
     finishWave: () => scene().testFinishWave(),
     canRestart: () => scene().testCanRestart(),
     setRestartDelay: (ms) => scene().testSetRestartDelay(ms),
+    setScore: (score) => scene().testSetScore(score),
     scene: () => game.scene.getScenes(true)[0]?.scene.key ?? null,
     snapshot: () => {
       const s = game.scene.getScene('Game') as GameScene | null;
