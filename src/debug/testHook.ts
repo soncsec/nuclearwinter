@@ -1,6 +1,7 @@
-import type Phaser from 'phaser';
+import Phaser from 'phaser';
 import type { Point } from '../logic/geometry';
 import type { GameScene, GameSnapshot } from '../scenes/GameScene';
+import type { TitleScene } from '../scenes/TitleScene';
 
 /**
  * Test-only hook for Playwright (ADR-006). It is loaded only in the e2e build
@@ -10,6 +11,12 @@ import type { GameScene, GameSnapshot } from '../scenes/GameScene';
 export interface TestHook {
   /** The key of the scene that is running, or null while loading. */
   scene(): string | null;
+  /** The title screen's lines, top to bottom, or null when it is not showing. */
+  titleLines(): string[] | null;
+  /** Starts the game from the title screen, as a tap would. */
+  start(): void;
+  /** Tells the game the page was hidden, as switching tabs or apps does. */
+  hide(): void;
   snapshot(): GameSnapshot | null;
   /** Launches an enemy warhead from `origin` towards `target` at `speed` px/s. */
   launchWarhead(origin: Point, target: Point, speed: number): void;
@@ -37,7 +44,14 @@ export function installTestHook(game: Phaser.Game): void {
     if (!s || !game.scene.isActive('Game')) throw new Error('the game scene is not running');
     return s;
   };
+  const title = (): TitleScene | null => {
+    const t = game.scene.getScene('Title') as TitleScene | null;
+    return t && game.scene.isActive('Title') ? t : null;
+  };
   window.__game = {
+    titleLines: () => title()?.lines() ?? null,
+    start: () => title()?.startGame(),
+    hide: () => game.events.emit(Phaser.Core.Events.HIDDEN),
     launchWarhead: (origin, target, speed) => scene().testLaunchWarhead(origin, target, speed),
     holdWave: () => scene().testHoldWave(),
     finishWave: () => scene().testFinishWave(),

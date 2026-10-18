@@ -4,16 +4,17 @@ import {
   AMMO_PIPS,
   BASE_KEYS,
   COLORS,
+  CONFIRM_KEYS,
   DEFAULT_SEED,
   EFFECTS,
-  GAME_HEIGHT,
   GAME_WIDTH,
   GROUND_Y,
   HUD,
   MAX_STEPS_PER_FRAME,
+  PAUSE,
+  PAUSE_KEYS,
   SCREENS,
   SHAPES,
-  SKY,
   STEP_MS,
   TRAILS,
 } from '../config/tuning';
@@ -21,7 +22,7 @@ import { EffectPool, type EffectKind } from '../entities/EffectPool';
 import { blastRadius } from '../logic/blast';
 import type { Point } from '../logic/geometry';
 import { createRng, type Rng } from '../logic/rng';
-import { loadHighScore, saveHighScore, type KeyValueStore } from '../logic/highScore';
+import { loadHighScore, saveHighScore } from '../logic/highScore';
 import { countUp, formatScore } from '../logic/scoring';
 import {
   createWorld,
@@ -33,11 +34,14 @@ import {
   type Phase,
   type World,
 } from '../logic/world';
+import { browserStore, drawBackdrop } from './ui';
 
 /** Read-only view of the game state, used by the e2e test hook. */
 export interface GameSnapshot {
   seed: number;
   phase: Phase;
+  /** Whether play is paused (the simulation stands still until a tap resumes it). */
+  paused: boolean;
   /** The wave being played, 1 for the first. */
   wave: number;
   /** The wave number as the HUD shows it. */
@@ -67,7 +71,7 @@ export interface GameSnapshot {
   effects: number;
   /** Explosion sprites started so far, by kind. */
   effectsPlayed: { impact: number; cityHit: number };
-  /** Lines of the wave-cleared or game-over message, empty while playing. */
+  /** Lines of the paused, wave-cleared or game-over message, empty while playing. */
   message: string[];
 }
 
@@ -104,6 +108,9 @@ export class GameScene extends Phaser.Scene {
   private endedAt: number | null = null;
   /** How long taps are ignored after the message appears (the test hook can change it). */
   private restartDelayMs: number = SCREENS.restartDelayMs;
+  private paused = false;
+  /** Pauses when the page is hidden or loses focus, so a wave never plays on unseen. */
+  private readonly onHidden = (): void => this.pauseGame();
 
   constructor() {
     super('Game');
@@ -126,16 +133,8 @@ export class GameScene extends Phaser.Scene {
     this.pendingMs = 0;
     this.lastShot = null;
 
-    // The distant skyline, tiled across the screen. Its own sky matches the game's sky colour.
-    this.cameras.main.setBackgroundColor(SKY.color);
-    this.add
-      .tileSprite(0, SKY.skylineTop, GAME_WIDTH, SKY.skylineHeight, 'skylineFar')
-      .setOrigin(0, 0);
-
-    this.add
-      .rectangle(0, GROUND_Y, GAME_WIDTH, GAME_HEIGHT - GROUND_Y, COLORS.ground)
-      .setOrigin(0, 0);
-    this.add.rectangle(0, GROUND_Y, GAME_WIDTH, 1, COLORS.groundEdge).setOrigin(0, 0);
+    this.paused = false;
+    drawBackdrop(this);
 
     this.defenses = this.add.graphics();
     this.outLabels = this.world.bases.map((b) =>
@@ -168,12 +167,13 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5, 0);
     this.updateScore();
     this.waveText = this.add
-      .text(GAME_WIDTH - HUD.margin, HUD.margin, '', {
+      .text(GAME_WIDTH - PAUSE.width - HUD.margin, HUD.margin, '', {
         fontFamily: FONT_FAMILY,
         fontSize: `${HUD.fontSizePx}px`,
         color: COLORS.hud,
       })
       .setOrigin(1, 0);
+    this.drawPauseButton();
 
     this.endedAt = null;
     this.messagePanel = this.add
@@ -207,40 +207,60 @@ export class GameScene extends Phaser.Scene {
     this.bannersShown = [];
     this.showWave();
 
-    // One input path for mouse and touch (ADR-NW06): fire where the pointer goes down.
-    // Between waves a tap starts the next wave; after game over it starts a new game.
+    // One input path for mouse and touch (ADR-NW06): a tap on the pause button pauses or
+    // resumes; any other tap fires while playing, or confirms the screen that is showing.
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      if (this.world.phase === 'playing') fire(this.world, { x: p.worldX, y: p.worldY });
-      else if (!this.canRestart()) return;
-      else if (this.world.phase === 'waveCleared') this.nextWave();
-      else this.scene.restart();
+      if (this.onPauseButton(p.worldX, p.worldY)) this.togglePause();
+      else this.confirm({ x: p.worldX, y: p.worldY });
     });
 
-    // Desktop: a base key fires from that base at the mouse position.
+    // Desktop: pause keys, confirm keys, and base keys that fire from one base at the mouse.
     // Phaser's keyboard queue can hand the same browser event over more than once, so each
     // event is handled only the first time (otherwise one key press could fire several shots).
     const seenKeys = new WeakSet<KeyboardEvent>();
     this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
       if (seenKeys.has(e)) return;
       seenKeys.add(e);
-      if (e.repeat || this.world.phase !== 'playing') return;
-      const baseIndex = BASE_KEYS.findIndex((keys) => keys.includes(e.key.toLowerCase()));
+      if (e.repeat) return;
+      const key = e.key.toLowerCase();
+      if (PAUSE_KEYS.includes(key)) {
+        this.togglePause();
+        return;
+      }
+      if (this.paused || this.world.phase !== 'playing') {
+        if (CONFIRM_KEYS.includes(key)) this.confirm(null);
+        return;
+      }
+      const baseIndex = BASE_KEYS.findIndex((keys) => keys.includes(key));
       if (baseIndex < 0) return;
       const p = this.input.activePointer;
       fire(this.world, { x: p.worldX, y: p.worldY }, baseIndex);
     });
+
+    // A hidden page or a lost focus pauses the game; the listeners go when the scene does.
+    this.game.events.on(Phaser.Core.Events.HIDDEN, this.onHidden);
+    this.game.events.on(Phaser.Core.Events.BLUR, this.onHidden);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.game.events.off(Phaser.Core.Events.HIDDEN, this.onHidden);
+      this.game.events.off(Phaser.Core.Events.BLUR, this.onHidden);
+    });
   }
 
   override update(_time: number, deltaMs: number): void {
-    this.pendingMs += deltaMs;
-    let steps = 0;
-    while (this.pendingMs >= STEP_MS && steps < MAX_STEPS_PER_FRAME) {
-      step(this.world, this.rng, STEP_MS);
-      this.pendingMs -= STEP_MS;
-      steps++;
+    if (this.paused) {
+      // Time spent paused is not simulated when play resumes.
+      this.pendingMs = 0;
+    } else {
+      this.pendingMs += deltaMs;
+      let steps = 0;
+      while (this.pendingMs >= STEP_MS && steps < MAX_STEPS_PER_FRAME) {
+        step(this.world, this.rng, STEP_MS);
+        this.pendingMs -= STEP_MS;
+        steps++;
+      }
+      // After a long stall, drop the backlog instead of fast-forwarding through it.
+      if (steps === MAX_STEPS_PER_FRAME) this.pendingMs = 0;
     }
-    // After a long stall, drop the backlog instead of fast-forwarding through it.
-    if (steps === MAX_STEPS_PER_FRAME) this.pendingMs = 0;
     this.handleEvents();
     this.drawMoving();
     this.blinkPrompt();
@@ -291,6 +311,7 @@ export class GameScene extends Phaser.Scene {
     return {
       seed: this.seed,
       phase: w.phase,
+      paused: this.paused,
       wave: w.wave.number,
       hudWave: this.waveText.text,
       waveBanner: this.waveBanner.visible ? this.waveBanner.text : null,
@@ -368,9 +389,9 @@ export class GameScene extends Phaser.Scene {
           const newBest = this.world.score > this.highScore;
           this.showMessage(
             'GAME OVER',
-            `SCORE ${formatScore(this.world.score, HUD.scoreDigits)}`,
+            `SCORE ${formatScore(this.world.score, HUD.scoreDigits)}  WAVE ${this.world.wave.number}`,
             newBest ? 'NEW HIGH SCORE' : '',
-            'TO PLAY AGAIN',
+            'TO CONTINUE',
           );
           this.updateScore();
           break;
@@ -413,6 +434,59 @@ export class GameScene extends Phaser.Scene {
     for (const t of this.messageLines) t.setVisible(false);
   }
 
+  /**
+   * A tap (or a confirm key, with no position) outside the pause button: it resumes a paused
+   * game, fires while playing, starts the next wave once cleared, or returns to the title
+   * after game over. Screens accept taps only after a short lockout, so a late shot can't
+   * skip them.
+   */
+  private confirm(at: Point | null): void {
+    if (this.paused) {
+      this.resumeGame();
+      return;
+    }
+    if (this.world.phase === 'playing') {
+      if (at) fire(this.world, at);
+      return;
+    }
+    if (!this.canRestart()) return;
+    if (this.world.phase === 'waveCleared') this.nextWave();
+    else this.scene.start('Title');
+  }
+
+  private togglePause(): void {
+    if (this.paused) this.resumeGame();
+    else this.pauseGame();
+  }
+
+  /** Stops the simulation and shows PAUSED; only play can be paused, not the other screens. */
+  private pauseGame(): void {
+    if (this.paused || this.world.phase !== 'playing') return;
+    this.paused = true;
+    this.showMessage('PAUSED', '', '', 'TO RESUME');
+  }
+
+  private resumeGame(): void {
+    if (!this.paused) return;
+    this.paused = false;
+    this.pendingMs = 0;
+    this.hideMessage();
+  }
+
+  /** Whether a game-pixel position is on the pause button in the top-right corner. */
+  private onPauseButton(x: number, y: number): boolean {
+    return x >= GAME_WIDTH - PAUSE.width && y <= PAUSE.height;
+  }
+
+  /** Two bars in the top-right corner; the whole corner is the tap target. */
+  private drawPauseButton(): void {
+    const g = this.add.graphics().fillStyle(COLORS.pauseIcon);
+    const cx = GAME_WIDTH - PAUSE.width / 2;
+    const top = (PAUSE.height - PAUSE.barHeight) / 2;
+    g.fillRect(cx - PAUSE.barGap / 2 - PAUSE.barWidth, top, PAUSE.barWidth, PAUSE.barHeight);
+    g.fillRect(cx + PAUSE.barGap / 2, top, PAUSE.barWidth, PAUSE.barHeight);
+  }
+
   private nextWave(): void {
     if (!startNextWave(this.world)) return;
     this.tally = null;
@@ -440,11 +514,12 @@ export class GameScene extends Phaser.Scene {
     return this.endedAt !== null && this.time.now - this.endedAt >= this.restartDelayMs;
   }
 
-  /** The "play again" prompt blinks once taps are accepted, and stays hidden before that. */
+  /** The prompt blinks once taps are accepted, and stays hidden before that. */
   private blinkPrompt(): void {
     const prompt = this.messageLines[3];
     if (!prompt || this.endedAt === null) return;
-    const on = this.canRestart() && Math.floor(this.time.now / SCREENS.promptBlinkMs) % 2 === 0;
+    const ready = this.paused || this.canRestart();
+    const on = ready && Math.floor(this.time.now / SCREENS.promptBlinkMs) % 2 === 0;
     prompt.setAlpha(on ? 1 : 0);
   }
 
@@ -541,13 +616,4 @@ function randomSeed(): number {
   const buf = new Uint32Array(1);
   crypto.getRandomValues(buf);
   return buf[0] ?? DEFAULT_SEED;
-}
-
-/** This browser's localStorage, or null where it is blocked (some private modes throw). */
-function browserStore(): KeyValueStore | null {
-  try {
-    return window.localStorage;
-  } catch {
-    return null;
-  }
 }

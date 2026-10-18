@@ -1,5 +1,5 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
-import { openGame, snapshot, tapGame } from './helpers';
+import { openGame, snapshot, tapGame, titleLines } from './helpers';
 
 const GROUND_Y = 204;
 /** SCREENS.restartDelayMs in tuning.ts. */
@@ -17,13 +17,24 @@ async function destroyAllCities(page: Page): Promise<void> {
   );
 }
 
-/** Taps once taps are accepted again; returns when play has resumed (next wave or new game). */
-async function tapToRestart(page: Page, info: TestInfo): Promise<void> {
+async function waitForTaps(page: Page): Promise<void> {
   await expect
     .poll(() => page.evaluate(() => window.__game?.canRestart() ?? false), { timeout: 5_000 })
     .toBe(true);
+}
+
+/** Taps once taps are accepted again; returns when the next wave is playing. */
+async function tapToRestart(page: Page, info: TestInfo): Promise<void> {
+  await waitForTaps(page);
   await tapGame(page, info, 192, 100);
   await expect.poll(async () => (await snapshot(page)).phase).toBe('playing');
+}
+
+/** Taps once taps are accepted after game over; returns when the title screen is showing. */
+async function tapToTitle(page: Page, info: TestInfo): Promise<void> {
+  await waitForTaps(page);
+  await tapGame(page, info, 192, 100);
+  await expect.poll(() => page.evaluate(() => window.__game?.scene() ?? null)).toBe('Title');
 }
 
 test('clearing the wave counts up a bonus for cities and missiles left', async ({ page }, info) => {
@@ -124,13 +135,16 @@ test('losing every city ends the game and shows the score', async ({ page }) => 
   await expect.poll(async () => (await snapshot(page)).phase).toBe('gameOver');
   const snap = await snapshot(page);
   expect(snap.cities).toEqual([false, false, false, false, false, false]);
-  expect(snap.message.slice(0, 2)).toEqual(['GAME OVER', 'SCORE 000000']);
+  expect(snap.message.slice(0, 2)).toEqual(['GAME OVER', 'SCORE 000000  WAVE 1']);
+  expect(snap.message[snap.message.length - 1]).toMatch(/^(TAP|CLICK) TO CONTINUE$/);
   // The game ended while "WAVE 1" was still up; the banner must give way to the message.
   expect(snap.bannersShown).toEqual(['WAVE 1']);
   expect(snap.waveBanner).toBeNull();
 });
 
-test('a tap after game over starts a fresh game, but not straight away', async ({ page }, info) => {
+test('a tap after game over returns to the title, but not straight away', async ({
+  page,
+}, info) => {
   await openGame(page, '?seed=7');
   await page.evaluate(() => window.__game?.holdWave());
   // A long lockout, so "too early" doesn't depend on how fast the test machine is.
@@ -145,9 +159,13 @@ test('a tap after game over starts a fresh game, but not straight away', async (
   await page.waitForTimeout(300);
   expect((await snapshot(page)).phase).toBe('gameOver');
 
-  // Back to the real lockout; once it has passed, a tap starts a new game.
+  // Back to the real lockout; once it has passed, a tap returns to the title, which shows the
+  // score just made as the high score, and a tap there starts a fresh game.
   await page.evaluate((ms) => window.__game?.setRestartDelay(ms), RESTART_DELAY_MS);
-  await tapToRestart(page, info);
+  await tapToTitle(page, info);
+  expect(await titleLines(page)).toContain('HI 000000');
+  await tapGame(page, info, 192, 100);
+  await expect.poll(() => page.evaluate(() => window.__game?.scene() ?? null)).toBe('Game');
   const snap = await snapshot(page);
   expect(snap.cities).toEqual([true, true, true, true, true, true]);
   expect(snap.bases).toEqual([true, true, true]);
@@ -168,7 +186,9 @@ test('without ?seed each game gets a new random seed', async ({ page }, info) =>
   await page.evaluate(() => window.__game?.holdWave());
   await destroyAllCities(page);
   await expect.poll(async () => (await snapshot(page)).phase).toBe('gameOver');
-  await tapToRestart(page, info);
+  await tapToTitle(page, info);
+  await page.evaluate(() => window.__game?.start());
+  await expect.poll(() => page.evaluate(() => window.__game?.scene() ?? null)).toBe('Game');
   expect((await snapshot(page)).seed).not.toBe(first);
 });
 

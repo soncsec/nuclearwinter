@@ -172,6 +172,8 @@ export const COLORS = {
   base: 0x8a7a5a,
   baseDestroyed: 0x3a3030,
   hud: '#f2e9dc',
+  title: '#7ff6ff',
+  pauseIcon: 0xf2e9dc,
   ammoPip: 0x7ff6ff,
   ammoOut: '#ff5a3c',
   messagePanel: 0x02121e,
@@ -227,6 +229,12 @@ export const BASE_KEYS: readonly (readonly string[])[] = [
   ['d', '3'],
 ];
 
+/** Desktop keys that pause and resume the game. */
+export const PAUSE_KEYS: readonly string[] = ['p', 'escape'];
+
+/** Desktop keys that stand in for a tap on a screen: start, next wave, continue. */
+export const CONFIRM_KEYS: readonly string[] = ['enter', ' '];
+
 /** Score and other text along the top of the screen, in Press Start 2P at its native 8 px. */
 export const HUD = {
   fontSizePx: 8,
@@ -275,4 +283,24 @@ export const SCREENS = {
   panelTop: 74,
   panelHeight: 66,
   panelAlpha: 0.7,
+} as const;
+
+/** The title screen: rows of its lines, in game pixels. */
+export const TITLE = {
+  /** The name is drawn at twice the font's native size, still a whole-number scale. */
+  nameFontSizePx: 16,
+  nameY: 44,
+  highY: 80,
+  helpY: 104,
+  help2Y: 116,
+  promptY: 148,
+} as const;
+
+/** The pause button: a tap target in the HUD's top-right corner, with a two-bar icon. */
+export const PAUSE = {
+  width: 20,
+  height: 14,
+  barWidth: 2,
+  barHeight: 6,
+  barGap: 2,
 } as const;

@@ -4,11 +4,26 @@ import type { GameSnapshot } from '../../src/scenes/GameScene';
 export const GAME_WIDTH = 384;
 export const GAME_HEIGHT = 216;
 
-export async function openGame(page: Page, query = ''): Promise<void> {
+const activeScene = (page: Page): Promise<string | null> =>
+  page.evaluate(() => window.__game?.scene() ?? null);
+
+/** Loads the page and waits for the title screen. */
+export async function openTitle(page: Page, query = ''): Promise<void> {
   await page.goto(`./${query}`);
-  await expect
-    .poll(() => page.evaluate(() => window.__game?.scene() ?? null), { timeout: 15_000 })
-    .toBe('Game');
+  await expect.poll(() => activeScene(page), { timeout: 15_000 }).toBe('Title');
+}
+
+/** Loads the page and starts a game from the title screen. */
+export async function openGame(page: Page, query = ''): Promise<void> {
+  await openTitle(page, query);
+  await page.evaluate(() => window.__game?.start());
+  await expect.poll(() => activeScene(page), { timeout: 15_000 }).toBe('Game');
+}
+
+export async function titleLines(page: Page): Promise<string[]> {
+  const lines = await page.evaluate(() => window.__game?.titleLines() ?? null);
+  if (!lines) throw new Error('title screen is not showing');
+  return lines;
 }
 
 export async function snapshot(page: Page): Promise<GameSnapshot> {

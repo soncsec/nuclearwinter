@@ -62,7 +62,7 @@
 - [x] M2.3 End-of-wave bonus count-up (leftover ammo, surviving cities), bases restored
 - [x] M2.4 Bonus city every 10,000 points
 - [x] M2.5 High score saved in localStorage
-- [ ] M2.6 Title screen, pause and resume, game-over screen
+- [x] M2.6 Title screen, pause and resume, game-over screen
 - [ ] M2.7 Dev-only debug overlay (wave, counts, fps)
 - [ ] M2.8 Daily challenge: same waves for everyone each day (seed from the UTC date), separate best score
 

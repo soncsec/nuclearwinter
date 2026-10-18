@@ -103,7 +103,8 @@ src/
 │   ├── waves.ts       wave number → wave description
 │   └── scoring.ts     kill points, end-of-wave bonus, bonus cities, high score
 ├── entities/          pooled Phaser sprites that mirror logic state
-├── scenes/            Boot/Preload, Title, Game, Hud, GameOver: thin, call into logic/
+├── scenes/            Title and Game (HUD, pause, wave and game-over screens): thin, call into logic/
+│   └── ui.ts          backdrop, centred text and localStorage access shared by the scenes
 └── debug/testHook.ts  window.__game for Playwright (e2e build only)
 public/assets/         art copied from legacy/ (listed in CREDITS.md) and the font
 tests/
