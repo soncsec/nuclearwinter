@@ -41,12 +41,12 @@
 
 **Demonstrable result:** one full wave is playable at `games.soncrant.com/nuclearwinter/` on a laptop and a phone.
 
-- [ ] M1.1 384×216 canvas with device-pixel whole-number zoom and the portrait "rotate" overlay (ADR-NW02)
-- [ ] M1.2 Copy the first art (one skyline background, one explosion) into `public/assets/`, list it in CREDITS.md
-- [ ] M1.3 Logic: geometry, world state and fixed-step update, unit tested (ADR-NW03)
-- [ ] M1.4 Six cities and three bases on screen (placeholder sprites allowed)
-- [ ] M1.5 Tap or click fires a counter-missile that explodes at the target; the blast destroys warheads
-- [ ] M1.6 One wave of plain warheads that destroy cities on impact; score per kill
+- [x] M1.1 384×216 canvas with device-pixel whole-number zoom and the portrait "rotate" overlay (ADR-NW02)
+- [x] M1.2 Copy the first art (one skyline background, one explosion) into `public/assets/`, list it in CREDITS.md
+- [x] M1.3 Logic: geometry, world state and fixed-step update, unit tested (ADR-NW03)
+- [x] M1.4 Six cities and three bases on screen (placeholder sprites allowed)
+- [x] M1.5 Tap or click fires a counter-missile that explodes at the target; the blast destroys warheads
+- [x] M1.6 One wave of plain warheads that destroy cities on impact; score per kill
 - [ ] M1.7 Wave end, game over and restart
 - [ ] M1.8 Playwright: boots clean under the production CSP, whole-number scaling on desktop and phone viewports, firing and a kill through the test hook
 - [ ] M1.9 First production release with smoke test; ZAP and static check results reported
