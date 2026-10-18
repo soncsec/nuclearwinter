@@ -236,6 +236,14 @@ export const HUD = {
   scoreDigits: 6,
 } as const;
 
+/** The best score, kept in this browser's localStorage (approved 2026-10-18; nothing else). */
+export const HIGH_SCORE = {
+  /** localStorage key. */
+  storageKey: 'nuclearwinter.highScore',
+  /** Stored values above this are treated as tampered and ignored. */
+  max: 999_999_999,
+} as const;
+
 /** Explosion sprites (assets/fx). They are pooled and reused. */
 export const EFFECTS = {
   /** Most explosions on screen at once; extra ones are skipped. */

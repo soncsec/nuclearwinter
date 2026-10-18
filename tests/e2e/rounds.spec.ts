@@ -125,6 +125,9 @@ test('losing every city ends the game and shows the score', async ({ page }) => 
   const snap = await snapshot(page);
   expect(snap.cities).toEqual([false, false, false, false, false, false]);
   expect(snap.message.slice(0, 2)).toEqual(['GAME OVER', 'SCORE 000000']);
+  // The game ended while "WAVE 1" was still up; the banner must give way to the message.
+  expect(snap.bannersShown).toEqual(['WAVE 1']);
+  expect(snap.waveBanner).toBeNull();
 });
 
 test('a tap after game over starts a fresh game, but not straight away', async ({ page }, info) => {
