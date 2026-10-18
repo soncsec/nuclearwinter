@@ -1,28 +1,55 @@
 import Phaser from 'phaser';
 import { IMAGES, SHEETS } from '../assets/manifest';
-import { DEFAULT_SEED, GAME_HEIGHT, GAME_WIDTH, PLAYER, SKY } from '../config/tuning';
-import { screenBounds, step, type Axis, type Point } from '../logic/movement';
+import {
+  COLORS,
+  DEFAULT_SEED,
+  GAME_HEIGHT,
+  GAME_WIDTH,
+  GROUND_Y,
+  MAX_STEPS_PER_FRAME,
+  SHAPES,
+  SKY,
+  STEP_MS,
+  TRAILS,
+} from '../config/tuning';
+import { blastRadius } from '../logic/blast';
+import type { Point } from '../logic/geometry';
 import { createRng, type Rng } from '../logic/rng';
+import {
+  createWorld,
+  drainEvents,
+  fire,
+  launchWarhead,
+  step,
+  type Phase,
+  type World,
+} from '../logic/world';
 
 /** Read-only view of the game state, used by the e2e test hook. */
 export interface GameSnapshot {
-  player: Point;
   seed: number;
+  phase: Phase;
+  timeMs: number;
+  score: number;
+  cities: boolean[];
+  bases: boolean[];
+  warheads: Point[];
+  interceptors: number;
+  blasts: number;
+  /** The most recent counter-missile launch, or null before the first. */
+  lastShot: { baseIndex: number; target: Point } | null;
 }
 
-type Keys = Record<
-  'up' | 'down' | 'left' | 'right' | 'w' | 'a' | 's' | 'd',
-  Phaser.Input.Keyboard.Key
->;
-
-/** Placeholder scene: replace with the real game. */
+/** The game screen: draws the world from src/logic and passes input to it. */
 export class GameScene extends Phaser.Scene {
-  private player!: Phaser.GameObjects.Rectangle;
-  private pos: Point = { x: 0, y: 0 };
-  private keys!: Keys;
+  private world!: World;
   private rng!: Rng;
   private seed = DEFAULT_SEED;
-  private readonly bounds = screenBounds(GAME_WIDTH, GAME_HEIGHT, PLAYER.size);
+  private defenses!: Phaser.GameObjects.Graphics;
+  private fx!: Phaser.GameObjects.Graphics;
+  /** Real time not yet simulated; the world advances in fixed steps (ADR-NW03). */
+  private pendingMs = 0;
+  private lastShot: GameSnapshot['lastShot'] = null;
 
   constructor() {
     super('Game');
@@ -41,64 +68,141 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     this.seed = seedFromUrl();
     this.rng = createRng(this.seed);
-    // A seeded star field shows the RNG in use; same ?seed= gives the same stars.
-    for (let i = 0; i < 60; i++) {
-      this.add.rectangle(
-        this.rng.int(0, GAME_WIDTH - 1),
-        this.rng.int(0, GAME_HEIGHT - 1),
-        1,
-        1,
-        0xffffff,
-        0.6,
-      );
-    }
+    this.world = createWorld();
+    this.pendingMs = 0;
+    this.lastShot = null;
+
     // The distant skyline, tiled across the screen. Its own sky matches the game's sky colour.
     this.cameras.main.setBackgroundColor(SKY.color);
     this.add
       .tileSprite(0, SKY.skylineTop, GAME_WIDTH, SKY.skylineHeight, 'skylineFar')
       .setOrigin(0, 0);
-    this.pos = { x: GAME_WIDTH / 2, y: GAME_HEIGHT * PLAYER.startY };
-    this.player = this.add.rectangle(
-      this.pos.x,
-      this.pos.y,
-      PLAYER.size,
-      PLAYER.size,
-      PLAYER.color,
-    );
 
-    const kb = this.input.keyboard;
-    if (!kb) throw new Error('keyboard input is not available');
-    this.keys = kb.addKeys({
-      up: 'UP',
-      down: 'DOWN',
-      left: 'LEFT',
-      right: 'RIGHT',
-      w: 'W',
-      a: 'A',
-      s: 'S',
-      d: 'D',
-    }) as Keys;
+    this.add
+      .rectangle(0, GROUND_Y, GAME_WIDTH, GAME_HEIGHT - GROUND_Y, COLORS.ground)
+      .setOrigin(0, 0);
+    this.add.rectangle(0, GROUND_Y, GAME_WIDTH, 1, COLORS.groundEdge).setOrigin(0, 0);
+
+    this.defenses = this.add.graphics();
+    this.drawDefenses();
+    this.fx = this.add.graphics();
+
+    // One input path for mouse and touch (ADR-NW06): fire where the pointer goes down.
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      fire(this.world, { x: p.worldX, y: p.worldY });
+    });
   }
 
   override update(_time: number, deltaMs: number): void {
-    this.pos = step(this.pos, this.readAxis(), deltaMs / 1000, PLAYER.speed, this.bounds);
-    this.player.setPosition(this.pos.x, this.pos.y);
+    this.pendingMs += deltaMs;
+    let steps = 0;
+    while (this.pendingMs >= STEP_MS && steps < MAX_STEPS_PER_FRAME) {
+      step(this.world, this.rng, STEP_MS);
+      this.pendingMs -= STEP_MS;
+      steps++;
+    }
+    // After a long stall, drop the backlog instead of fast-forwarding through it.
+    if (steps === MAX_STEPS_PER_FRAME) this.pendingMs = 0;
+    this.handleEvents();
+    this.drawMoving();
+  }
+
+  /** For the test hook: launches a warhead directly. */
+  testLaunchWarhead(origin: Point, target: Point, speed: number): void {
+    launchWarhead(this.world, origin, target, speed);
+  }
+
+  /**
+   * For the test hook: the wave launches nothing more, but stays open (it never counts as
+   * cleared), so a test controls every warhead.
+   */
+  testHoldWave(): void {
+    this.world.wave.nextLaunchMs = Number.POSITIVE_INFINITY;
   }
 
   snapshot(): GameSnapshot {
-    return { player: { ...this.pos }, seed: this.seed };
+    const w = this.world;
+    return {
+      seed: this.seed,
+      phase: w.phase,
+      timeMs: w.timeMs,
+      score: w.score,
+      cities: w.cities.map((c) => c.alive),
+      bases: w.bases.map((b) => b.alive),
+      warheads: w.warheads.map((h) => ({ ...h.pos })),
+      interceptors: w.interceptors.length,
+      blasts: w.blasts.length,
+      lastShot: this.lastShot,
+    };
   }
 
-  private readAxis(): Axis {
-    const k = this.keys;
-    const left = k.left.isDown || k.a.isDown;
-    const right = k.right.isDown || k.d.isDown;
-    const up = k.up.isDown || k.w.isDown;
-    const down = k.down.isDown || k.s.isDown;
-    return {
-      x: left === right ? 0 : left ? -1 : 1,
-      y: up === down ? 0 : up ? -1 : 1,
-    };
+  private handleEvents(): void {
+    let defensesChanged = false;
+    for (const e of drainEvents(this.world)) {
+      switch (e.type) {
+        case 'launch':
+          this.lastShot = { baseIndex: e.baseIndex, target: { ...e.target } };
+          break;
+        case 'cityDestroyed':
+        case 'baseDestroyed':
+          defensesChanged = true;
+          break;
+        default:
+          break;
+      }
+    }
+    if (defensesChanged) this.drawDefenses();
+  }
+
+  /** Trails, missiles, aim markers and blasts, redrawn every frame. */
+  private drawMoving(): void {
+    const g = this.fx.clear();
+    for (const h of this.world.warheads) {
+      g.lineStyle(1, COLORS.warheadTrail, TRAILS.alpha);
+      g.lineBetween(h.origin.x, h.origin.y, h.pos.x, h.pos.y);
+      g.fillStyle(COLORS.warheadHead).fillRect(Math.round(h.pos.x), Math.round(h.pos.y), 1, 1);
+    }
+    const m = TRAILS.aimMarkerHalf;
+    for (const i of this.world.interceptors) {
+      g.lineStyle(1, COLORS.interceptorTrail, TRAILS.alpha);
+      g.lineBetween(i.origin.x, i.origin.y, i.pos.x, i.pos.y);
+      g.lineStyle(1, COLORS.aimMarker);
+      g.lineBetween(i.target.x - m, i.target.y - m, i.target.x + m, i.target.y + m);
+      g.lineBetween(i.target.x - m, i.target.y + m, i.target.x + m, i.target.y - m);
+    }
+    for (const b of this.world.blasts) {
+      const r = blastRadius(b.ageMs);
+      g.fillStyle(COLORS.blastOuter).fillCircle(b.center.x, b.center.y, r);
+      g.fillStyle(COLORS.blastInner).fillCircle(b.center.x, b.center.y, r * TRAILS.blastCore);
+    }
+  }
+
+  /** Cities and bases: standing, or rubble once destroyed. */
+  private drawDefenses(): void {
+    const g = this.defenses.clear();
+    for (const city of this.world.cities) {
+      if (city.alive) {
+        for (const [dx, w, h] of SHAPES.cityBlocks) {
+          g.fillStyle(COLORS.city).fillRect(city.x + dx, GROUND_Y - h, w, h);
+          g.fillStyle(COLORS.cityWindow).fillRect(city.x + dx + 1, GROUND_Y - h + 2, 1, 1);
+        }
+      } else {
+        g.fillStyle(COLORS.rubble);
+        g.fillRect(city.x - 9, GROUND_Y - SHAPES.rubbleHeight, 19, SHAPES.rubbleHeight);
+      }
+    }
+    for (const base of this.world.bases) {
+      g.fillStyle(base.alive ? COLORS.base : COLORS.baseDestroyed);
+      const h = base.alive ? SHAPES.baseHeight : SHAPES.rubbleHeight;
+      g.fillTriangle(
+        base.x - SHAPES.baseHalfWidth,
+        GROUND_Y,
+        base.x + SHAPES.baseHalfWidth,
+        GROUND_Y,
+        base.x,
+        GROUND_Y - h,
+      );
+    }
   }
 }
 
