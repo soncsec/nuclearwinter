@@ -21,7 +21,7 @@ import { EffectPool, type EffectKind } from '../entities/EffectPool';
 import { blastRadius } from '../logic/blast';
 import type { Point } from '../logic/geometry';
 import { createRng, type Rng } from '../logic/rng';
-import { formatScore } from '../logic/scoring';
+import { countUp, formatScore } from '../logic/scoring';
 import {
   createWorld,
   drainEvents,
@@ -89,6 +89,8 @@ export class GameScene extends Phaser.Scene {
   /** Real time (ms) when the "WAVE n" banner should hide. */
   private bannerUntil = 0;
   private bannersShown: string[] = [];
+  /** The end-of-wave bonus counting up on screen, or null when no count is running. */
+  private tally: { scoreBefore: number; bonus: number; startedAt: number } | null = null;
   private messageLines: Phaser.GameObjects.Text[] = [];
   private messagePanel!: Phaser.GameObjects.Rectangle;
   private outLabels: Phaser.GameObjects.Text[] = [];
@@ -165,16 +167,18 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0, 0)
       .setAlpha(SCREENS.panelAlpha)
       .setVisible(false);
-    this.messageLines = [SCREENS.titleY, SCREENS.detailY, SCREENS.promptY].map((y) =>
-      this.add
-        .text(GAME_WIDTH / 2, y, '', {
-          fontFamily: FONT_FAMILY,
-          fontSize: `${HUD.fontSizePx}px`,
-          color: COLORS.hud,
-          align: 'center',
-        })
-        .setOrigin(0.5, 0)
-        .setVisible(false),
+    this.tally = null;
+    this.messageLines = [SCREENS.titleY, SCREENS.detailY, SCREENS.detail2Y, SCREENS.promptY].map(
+      (y) =>
+        this.add
+          .text(GAME_WIDTH / 2, y, '', {
+            fontFamily: FONT_FAMILY,
+            fontSize: `${HUD.fontSizePx}px`,
+            color: COLORS.hud,
+            align: 'center',
+          })
+          .setOrigin(0.5, 0)
+          .setVisible(false),
     );
     this.waveBanner = this.add
       .text(GAME_WIDTH / 2, SCREENS.titleY, '', {
@@ -224,6 +228,7 @@ export class GameScene extends Phaser.Scene {
     this.handleEvents();
     this.drawMoving();
     this.blinkPrompt();
+    this.updateTally();
     if (this.waveBanner.visible && this.time.now >= this.bannerUntil) {
       this.waveBanner.setVisible(false);
     }
@@ -308,8 +313,19 @@ export class GameScene extends Phaser.Scene {
           defensesChanged = true;
           break;
         case 'waveCleared': {
-          const saved = this.world.cities.filter((c) => c.alive).length;
-          this.showMessage(`WAVE ${e.number} CLEARED`, `CITIES SAVED ${saved}`, 'FOR NEXT WAVE');
+          const b = e.bonus;
+          this.showMessage(
+            `WAVE ${e.number} CLEARED`,
+            `CITIES ${b.citiesSaved}  MISSILES ${b.missilesLeft}`,
+            'BONUS 0',
+            'FOR NEXT WAVE',
+          );
+          this.tally = {
+            scoreBefore: this.world.score - b.total,
+            bonus: b.total,
+            startedAt: this.time.now,
+          };
+          this.updateTally();
           break;
         }
         case 'waveStarted':
@@ -320,6 +336,7 @@ export class GameScene extends Phaser.Scene {
           this.showMessage(
             'GAME OVER',
             `SCORE ${formatScore(this.world.score, HUD.scoreDigits)}`,
+            '',
             'TO PLAY AGAIN',
           );
           break;
@@ -330,13 +347,27 @@ export class GameScene extends Phaser.Scene {
     if (defensesChanged) this.drawDefenses();
   }
 
-  /** Shows a three-line message; `action` completes the prompt, e.g. "TAP FOR NEXT WAVE". */
-  private showMessage(title: string, detail: string, action: string): void {
+  /**
+   * Shows the message panel: a title, two detail lines (an empty one is hidden) and a prompt,
+   * where `action` completes it, e.g. "TAP FOR NEXT WAVE".
+   */
+  private showMessage(title: string, detail: string, detail2: string, action: string): void {
     this.endedAt = this.time.now;
     const prompt = `${this.sys.game.device.input.touch ? 'TAP' : 'CLICK'} ${action}`;
-    [title, detail, prompt].forEach((line, i) => this.messageLines[i]?.setText(line));
     this.messagePanel.setVisible(true);
-    for (const t of this.messageLines) t.setVisible(true);
+    [title, detail, detail2, prompt].forEach((line, i) =>
+      this.messageLines[i]?.setText(line).setVisible(line !== ''),
+    );
+  }
+
+  /** Counts the bonus up on screen, with the HUD score rising alongside it. */
+  private updateTally(): void {
+    if (!this.tally) return;
+    const { scoreBefore, bonus, startedAt } = this.tally;
+    const shown = countUp(0, bonus, this.time.now - startedAt, SCREENS.bonusCountMs);
+    this.messageLines[2]?.setText(`BONUS ${shown}`);
+    this.scoreText.setText(formatScore(scoreBefore + shown, HUD.scoreDigits));
+    if (shown === bonus) this.tally = null;
   }
 
   private hideMessage(): void {
@@ -347,6 +378,8 @@ export class GameScene extends Phaser.Scene {
 
   private nextWave(): void {
     if (!startNextWave(this.world)) return;
+    this.tally = null;
+    this.updateScore();
     this.hideMessage();
   }
 
@@ -365,7 +398,7 @@ export class GameScene extends Phaser.Scene {
 
   /** The "play again" prompt blinks once taps are accepted, and stays hidden before that. */
   private blinkPrompt(): void {
-    const prompt = this.messageLines[2];
+    const prompt = this.messageLines[3];
     if (!prompt || this.endedAt === null) return;
     const on = this.canRestart() && Math.floor(this.time.now / SCREENS.promptBlinkMs) % 2 === 0;
     prompt.setAlpha(on ? 1 : 0);

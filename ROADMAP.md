@@ -59,7 +59,7 @@
 
 - [x] M2.1 Ammo per base, nearest-base firing, empty-base handling, optional desktop base keys
 - [x] M2.2 Wave formula with hand-set first waves (ADR-NW05)
-- [ ] M2.3 End-of-wave bonus count-up (leftover ammo, surviving cities), bases restored
+- [x] M2.3 End-of-wave bonus count-up (leftover ammo, surviving cities), bases restored
 - [ ] M2.4 Bonus city every 10,000 points
 - [ ] M2.5 High score saved in localStorage
 - [ ] M2.6 Title screen, pause and resume, game-over screen

@@ -26,7 +26,7 @@ async function tapToRestart(page: Page, info: TestInfo): Promise<void> {
   await expect.poll(async () => (await snapshot(page)).phase).toBe('playing');
 }
 
-test('clearing the wave shows how many cities were saved', async ({ page }) => {
+test('clearing the wave counts up a bonus for cities and missiles left', async ({ page }, info) => {
   await openGame(page, '?seed=7');
   await page.evaluate(() => window.__game?.holdWave());
   await page.evaluate(
@@ -34,13 +34,44 @@ test('clearing the wave shows how many cities were saved', async ({ page }) => {
     GROUND_Y,
   );
   await expect.poll(async () => (await snapshot(page)).cities[0]).toBe(false);
+  // Spend two missiles, so 28 are left.
+  await tapGame(page, info, 30, 60);
+  await tapGame(page, info, 350, 60);
+  await expect.poll(async () => (await snapshot(page)).ammo).toEqual([9, 10, 9]);
   await page.evaluate(() => window.__game?.finishWave());
 
-  await expect.poll(async () => (await snapshot(page)).phase).toBe('waveCleared');
-  const message = (await snapshot(page)).message;
-  expect(message[0]).toBe('WAVE 1 CLEARED');
-  expect(message[1]).toBe('CITIES SAVED 5');
-  expect(message[2]).toMatch(/^(TAP|CLICK) FOR NEXT WAVE$/);
+  await expect
+    .poll(async () => (await snapshot(page)).phase, { timeout: 10_000 })
+    .toBe('waveCleared');
+  // 5 cities x 100 + 28 missiles x 5 = 640, counted up on screen and into the score.
+  await expect.poll(async () => (await snapshot(page)).message[2]).toBe('BONUS 640');
+  const snap = await snapshot(page);
+  expect(snap.score).toBe(640);
+  expect(snap.hudScore).toBe('000640');
+  expect(snap.message[0]).toBe('WAVE 1 CLEARED');
+  expect(snap.message[1]).toBe('CITIES 5  MISSILES 28');
+  expect(snap.message[3]).toMatch(/^(TAP|CLICK) FOR NEXT WAVE$/);
+});
+
+test('a base destroyed in one wave is rebuilt for the next', async ({ page }, info) => {
+  await openGame(page, '?seed=7');
+  await page.evaluate(() => window.__game?.holdWave());
+  await page.evaluate(
+    (ground) =>
+      window.__game?.launchWarhead({ x: 192, y: ground - 20 }, { x: 192, y: ground }, 200),
+    GROUND_Y,
+  );
+  await expect.poll(async () => (await snapshot(page)).bases).toEqual([true, false, true]);
+  await page.evaluate(() => window.__game?.finishWave());
+  await expect
+    .poll(async () => (await snapshot(page)).phase, { timeout: 10_000 })
+    .toBe('waveCleared');
+
+  await tapToRestart(page, info);
+  await expect.poll(async () => (await snapshot(page)).hudWave).toBe('WAVE 2');
+  const snap = await snapshot(page);
+  expect(snap.bases).toEqual([true, true, true]);
+  expect(snap.ammo).toEqual([10, 10, 10]);
 });
 
 test('the game starts at wave 1 and says so', async ({ page }) => {
