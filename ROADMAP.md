@@ -6,8 +6,8 @@
 
 | Milestone | Status |
 |---|---|
-| M0 Setup | In progress |
-| M1 Walking skeleton (one wave, released to production) | Not started |
+| M0 Setup | Done |
+| M1 Walking skeleton (one wave, released to production) | In progress |
 | M2 Core game | Not started |
 | M3 Enemies | Not started |
 | M4 The Nuclear Winter look | Not started |
@@ -31,8 +31,8 @@
 
 - [x] M0.1 Repo created from `soncsec/game-template`, `scripts/init-game.sh` run (ports 5177/6177/6178)
 - [x] M0.2 Branch protection on `main` with the four required checks; secret scanning and vulnerability alerts on
-- [ ] M0.3 GitHub Pages turned on (Actions mode, `main` only); first staging deploy and ZAP scan pass
-- [ ] M0.4 Portal entry `games/nuclearwinter.json` (status `in-development`, devPort 5177) merged in `soncsec/games-portal`
+- [x] M0.3 GitHub Pages turned on (Actions mode, `main` only); first staging deploy and ZAP scan pass
+- [x] M0.4 Portal entry `games/nuclearwinter.json` (status `in-development`, devPort 5177) merged in `soncsec/games-portal`
 - [x] M0.5 PROJECT.md, ARCHITECTURE.md, ROADMAP.md and CLAUDE.md approved; docs page published
 
 **Acceptance criteria:** the four required checks pass on the first PR; staging URL serves the placeholder; ZAP reports no high-risk findings; portal PR merged.
@@ -64,6 +64,7 @@
 - [ ] M2.5 High score saved in localStorage
 - [ ] M2.6 Title screen, pause and resume, game-over screen
 - [ ] M2.7 Dev-only debug overlay (wave, counts, fps)
+- [ ] M2.8 Daily challenge: same waves for everyone each day (seed from the UTC date), separate best score
 
 **Acceptance criteria:** a full game from title to game over and back; scoring rules unit tested; high score survives a reload.
 
@@ -89,6 +90,7 @@
 - [ ] M4.5 "Reduce flashing" setting, saved in localStorage
 - [ ] M4.6 Press Start 2P HUD and screens
 - [ ] M4.7 Optional bloom filter, switched off automatically when the frame rate drops (ADR-NW04)
+- [ ] M4.8 Phone vibration on city hits (Vibration API where supported), with a setting
 
 **Acceptance criteria:** owner approves the look on staging; 60 fps on a laptop; no flash exceeds three per second.
 
@@ -101,6 +103,7 @@
 - [ ] M5.3 Load-time check (under 2 seconds on the local network)
 - [ ] M5.4 Portal card image (256×192) and status `coming-soon`, then `live` after release (portal PRs)
 - [ ] M5.5 Release 1.0 to production; production check workflow passes
+- [ ] M5.6 Install as an app and play offline: web app manifest and a service worker that caches only this game's own files. Needs a new ADR and a security review (cache scope, updates, no third-party requests) approved by the owner before release.
 
 **Acceptance criteria:** every non-functional requirement in PROJECT.md met and recorded; owner signs off the MVP.
 

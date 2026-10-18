@@ -34,6 +34,9 @@ Casual players visiting `games.soncrant.com`, on any current browser and device.
 | Platforms | Desktop, phone and tablet browsers. Landscape only; portrait shows a "rotate your device" message. |
 | Art | Shared art pack (`legacy/`, CC0): city skylines (Warped Synth City / Urban Landscape), explosion packs, space or night-sky backgrounds. Gaps (bases) are filled with pack props or our own simple pixel sprites. |
 | Font | Press Start 2P (SIL OFL 1.1), as in Star Destroyer and the portal |
+| Daily challenge | A mode where everyone gets the same waves each day (seed from the UTC date), with its own best score saved on the device |
+| Vibration | Short phone vibration when a city is hit, on devices that support it; off when "reduce flashing" is on or vibration is turned off in settings |
+| Install and offline | Installable as an app (web app manifest) and playable offline (service worker caching only this game's own files). Security-reviewed before release. |
 
 ### Out of scope for 1.0
 
@@ -44,7 +47,7 @@ Casual players visiting `games.soncrant.com`, on any current browser and device.
 ## 5. Constraints (shared by every Soncrant Arcade game)
 
 - Browser only, single player.
-- No accounts, payments, analytics, cookies or third-party requests. localStorage holds only the high score and the reduce-flashing setting.
+- No accounts, payments, analytics, cookies or third-party requests. localStorage holds only the high scores (normal and daily challenge) and the settings (reduce flashing, vibration).
 - Art keeps its native pixel style; whole-number scaling only.
 - Served at `games.soncrant.com/nuclearwinter/` over HTTP (ADR-010), behind the security headers in the portal's Apache config.
 
@@ -70,6 +73,7 @@ A complete, replayable game, live on the portal, playable on desktop, phone and 
 | 2026-10-18 | Press Start 2P font, reused from Star Destroyer |
 | 2026-10-18 | "Reduce flashing" setting; city-hit flash kept under the safe limit |
 | 2026-10-18 | Standing approval for production releases after each merge |
+| 2026-10-18 | Added to scope: daily challenge, phone vibration, install as an app with offline play |
 
 ## 9. Open questions
 
