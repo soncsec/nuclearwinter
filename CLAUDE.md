@@ -5,6 +5,14 @@ Read `PROJECT.md` (scope), `ARCHITECTURE.md` (decisions), and `ROADMAP.md` (curr
 - **Owner (GitHub `soncsec`):** approves scope, architecture, merges, and production deployments.
 - **Claude:** implements approved tasks, writes tests, runs checks, prepares PRs, and keeps the docs current.
 
+## Owner priorities (2026-10-18)
+
+- **Security is the top priority.** Never deploy anything that could be exploited, expose data that isn't meant to be reachable, let unwanted commands run, or carry any other security risk. If in doubt, don't ship it; ask.
+- **Ask when anything is unclear**, including the owner's own requests. Don't guess.
+- The font, the legacy art and the release pipeline work well in the other games. Keep using them, but do suggest ideas that would make the product better.
+- **Get to a playable game early** so the owner can give feedback sooner. Prefer putting something playable on staging over finishing a layer completely.
+- **Remind the owner** of unanswered questions and of PRs waiting for review, at the start of each response until they are handled.
+
 ## Scope boundary (other Claude sessions may be building other games)
 
 - Change files only inside this repo. Never edit another game's folder, the portal repo, or shared assets.
