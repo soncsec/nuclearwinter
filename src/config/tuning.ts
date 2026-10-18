@@ -90,6 +90,22 @@ export const COLORS = {
   base: 0x8a7a5a,
   baseDestroyed: 0x3a3030,
   hud: '#f2e9dc',
+  warheadTrail: 0xff5a3c,
+  warheadHead: 0xffffff,
+  interceptorTrail: 0x7ff6ff,
+  aimMarker: 0x7ff6ff,
+  blastOuter: 0xffb347,
+  blastInner: 0xfff3d0,
+} as const;
+
+/** Trails and markers. */
+export const TRAILS = {
+  /** Alpha of a missile's trail behind its head. */
+  alpha: 0.8,
+  /** Half-size of the X drawn where a counter-missile will explode. */
+  aimMarkerHalf: 2,
+  /** The blast's bright core, as a fraction of its radius. */
+  blastCore: 0.55,
 } as const;
 
 /** How cities and bases are drawn: pixel offsets from their centre on the ground. */

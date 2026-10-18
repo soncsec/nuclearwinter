@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import type { GameSnapshot } from '../../src/scenes/GameScene';
+import { openGame, snapshot } from './helpers';
 
 /** Records console errors, uncaught exceptions and requests to other hosts. */
 function watchPage(page: Page): { errors: string[]; foreignRequests: string[] } {
@@ -16,19 +16,6 @@ function watchPage(page: Page): { errors: string[]; foreignRequests: string[] } 
     }
   });
   return { errors, foreignRequests };
-}
-
-async function snapshot(page: Page): Promise<GameSnapshot> {
-  const snap = await page.evaluate(() => window.__game?.snapshot() ?? null);
-  if (!snap) throw new Error('game scene is not running');
-  return snap;
-}
-
-async function openGame(page: Page, query = ''): Promise<void> {
-  await page.goto(`./${query}`);
-  await expect
-    .poll(() => page.evaluate(() => window.__game?.scene() ?? null), { timeout: 15_000 })
-    .toBe('Game');
 }
 
 test('boots with no console errors and no third-party requests', async ({ page }) => {

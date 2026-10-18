@@ -6,10 +6,24 @@ import {
   GAME_HEIGHT,
   GAME_WIDTH,
   GROUND_Y,
+  MAX_STEPS_PER_FRAME,
   SHAPES,
   SKY,
+  STEP_MS,
+  TRAILS,
 } from '../config/tuning';
-import { createWorld, type Phase, type World } from '../logic/world';
+import { blastRadius } from '../logic/blast';
+import type { Point } from '../logic/geometry';
+import { createRng, type Rng } from '../logic/rng';
+import {
+  createWorld,
+  drainEvents,
+  fire,
+  launchWarhead,
+  step,
+  type Phase,
+  type World,
+} from '../logic/world';
 
 /** Read-only view of the game state, used by the e2e test hook. */
 export interface GameSnapshot {
@@ -19,13 +33,23 @@ export interface GameSnapshot {
   score: number;
   cities: boolean[];
   bases: boolean[];
+  warheads: Point[];
+  interceptors: number;
+  blasts: number;
+  /** The most recent counter-missile launch, or null before the first. */
+  lastShot: { baseIndex: number; target: Point } | null;
 }
 
 /** The game screen: draws the world from src/logic and passes input to it. */
 export class GameScene extends Phaser.Scene {
   private world!: World;
+  private rng!: Rng;
   private seed = DEFAULT_SEED;
   private defenses!: Phaser.GameObjects.Graphics;
+  private fx!: Phaser.GameObjects.Graphics;
+  /** Real time not yet simulated; the world advances in fixed steps (ADR-NW03). */
+  private pendingMs = 0;
+  private lastShot: GameSnapshot['lastShot'] = null;
 
   constructor() {
     super('Game');
@@ -43,7 +67,10 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     this.seed = seedFromUrl();
+    this.rng = createRng(this.seed);
     this.world = createWorld();
+    this.pendingMs = 0;
+    this.lastShot = null;
 
     // The distant skyline, tiled across the screen. Its own sky matches the game's sky colour.
     this.cameras.main.setBackgroundColor(SKY.color);
@@ -58,6 +85,39 @@ export class GameScene extends Phaser.Scene {
 
     this.defenses = this.add.graphics();
     this.drawDefenses();
+    this.fx = this.add.graphics();
+
+    // One input path for mouse and touch (ADR-NW06): fire where the pointer goes down.
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      fire(this.world, { x: p.worldX, y: p.worldY });
+    });
+  }
+
+  override update(_time: number, deltaMs: number): void {
+    this.pendingMs += deltaMs;
+    let steps = 0;
+    while (this.pendingMs >= STEP_MS && steps < MAX_STEPS_PER_FRAME) {
+      step(this.world, this.rng, STEP_MS);
+      this.pendingMs -= STEP_MS;
+      steps++;
+    }
+    // After a long stall, drop the backlog instead of fast-forwarding through it.
+    if (steps === MAX_STEPS_PER_FRAME) this.pendingMs = 0;
+    this.handleEvents();
+    this.drawMoving();
+  }
+
+  /** For the test hook: launches a warhead directly. */
+  testLaunchWarhead(origin: Point, target: Point, speed: number): void {
+    launchWarhead(this.world, origin, target, speed);
+  }
+
+  /**
+   * For the test hook: the wave launches nothing more, but stays open (it never counts as
+   * cleared), so a test controls every warhead.
+   */
+  testHoldWave(): void {
+    this.world.wave.nextLaunchMs = Number.POSITIVE_INFINITY;
   }
 
   snapshot(): GameSnapshot {
@@ -69,7 +129,52 @@ export class GameScene extends Phaser.Scene {
       score: w.score,
       cities: w.cities.map((c) => c.alive),
       bases: w.bases.map((b) => b.alive),
+      warheads: w.warheads.map((h) => ({ ...h.pos })),
+      interceptors: w.interceptors.length,
+      blasts: w.blasts.length,
+      lastShot: this.lastShot,
     };
+  }
+
+  private handleEvents(): void {
+    let defensesChanged = false;
+    for (const e of drainEvents(this.world)) {
+      switch (e.type) {
+        case 'launch':
+          this.lastShot = { baseIndex: e.baseIndex, target: { ...e.target } };
+          break;
+        case 'cityDestroyed':
+        case 'baseDestroyed':
+          defensesChanged = true;
+          break;
+        default:
+          break;
+      }
+    }
+    if (defensesChanged) this.drawDefenses();
+  }
+
+  /** Trails, missiles, aim markers and blasts, redrawn every frame. */
+  private drawMoving(): void {
+    const g = this.fx.clear();
+    for (const h of this.world.warheads) {
+      g.lineStyle(1, COLORS.warheadTrail, TRAILS.alpha);
+      g.lineBetween(h.origin.x, h.origin.y, h.pos.x, h.pos.y);
+      g.fillStyle(COLORS.warheadHead).fillRect(Math.round(h.pos.x), Math.round(h.pos.y), 1, 1);
+    }
+    const m = TRAILS.aimMarkerHalf;
+    for (const i of this.world.interceptors) {
+      g.lineStyle(1, COLORS.interceptorTrail, TRAILS.alpha);
+      g.lineBetween(i.origin.x, i.origin.y, i.pos.x, i.pos.y);
+      g.lineStyle(1, COLORS.aimMarker);
+      g.lineBetween(i.target.x - m, i.target.y - m, i.target.x + m, i.target.y + m);
+      g.lineBetween(i.target.x - m, i.target.y + m, i.target.x + m, i.target.y - m);
+    }
+    for (const b of this.world.blasts) {
+      const r = blastRadius(b.ageMs);
+      g.fillStyle(COLORS.blastOuter).fillCircle(b.center.x, b.center.y, r);
+      g.fillStyle(COLORS.blastInner).fillCircle(b.center.x, b.center.y, r * TRAILS.blastCore);
+    }
   }
 
   /** Cities and bases: standing, or rubble once destroyed. */
