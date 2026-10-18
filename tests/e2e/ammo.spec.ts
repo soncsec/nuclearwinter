@@ -43,3 +43,18 @@ test('desktop keys fire from a chosen base at the mouse position', async ({ page
     .poll(async () => (await snapshot(page)).ammo)
     .toEqual([AMMO - 1, AMMO - 1, AMMO - 1]);
 });
+
+test('each key press fires exactly one missile', async ({ page }, info) => {
+  test.skip(Boolean(info.project.use.hasTouch), 'keyboard is desktop only');
+  const p = await toPage(page, 192, 80);
+  await page.mouse.move(p.x, p.y);
+  for (let round = 0; round < 3; round++) {
+    for (const key of ['a', 's', 'd']) await page.keyboard.press(key);
+  }
+  await expect
+    .poll(async () => (await snapshot(page)).ammo)
+    .toEqual([AMMO - 3, AMMO - 3, AMMO - 3]);
+  // Give any duplicate deliveries of the same key event time to show up.
+  await page.waitForTimeout(300);
+  expect((await snapshot(page)).ammo).toEqual([AMMO - 3, AMMO - 3, AMMO - 3]);
+});

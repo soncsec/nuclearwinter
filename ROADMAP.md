@@ -7,7 +7,7 @@
 | Milestone | Status |
 |---|---|
 | M0 Setup | Done |
-| M1 Walking skeleton (one wave, released to production) | Built and released; waiting for owner acceptance |
+| M1 Walking skeleton (one wave, released to production) | Done: owner played on PC and phone 2026-10-18 (phone frame rate still to record) |
 | M2 Core game | In progress |
 | M3 Enemies | Not started |
 | M4 The Nuclear Winter look | Not started |

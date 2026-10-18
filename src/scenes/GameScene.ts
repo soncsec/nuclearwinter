@@ -162,7 +162,12 @@ export class GameScene extends Phaser.Scene {
     });
 
     // Desktop: a base key fires from that base at the mouse position.
+    // Phaser's keyboard queue can hand the same browser event over more than once, so each
+    // event is handled only the first time (otherwise one key press could fire several shots).
+    const seenKeys = new WeakSet<KeyboardEvent>();
     this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
+      if (seenKeys.has(e)) return;
+      seenKeys.add(e);
       if (e.repeat || this.world.phase !== 'playing') return;
       const baseIndex = BASE_KEYS.findIndex((keys) => keys.includes(e.key.toLowerCase()));
       if (baseIndex < 0) return;
