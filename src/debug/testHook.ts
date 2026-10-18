@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { Point } from '../logic/geometry';
 import type { GameScene, GameSnapshot } from '../scenes/GameScene';
 import type { TitleScene } from '../scenes/TitleScene';
+import type { DebugScene } from './DebugOverlay';
 
 /**
  * Test-only hook for Playwright (ADR-006). It is loaded only in the e2e build
@@ -11,6 +12,8 @@ import type { TitleScene } from '../scenes/TitleScene';
 export interface TestHook {
   /** The key of the scene that is running, or null while loading. */
   scene(): string | null;
+  /** The debug overlay's lines, or null while it is hidden. */
+  debugLines(): string[] | null;
   /** The title screen's lines, top to bottom, or null when it is not showing. */
   titleLines(): string[] | null;
   /** Starts the game from the title screen, as a tap would. */
@@ -49,6 +52,7 @@ export function installTestHook(game: Phaser.Game): void {
     return t && game.scene.isActive('Title') ? t : null;
   };
   window.__game = {
+    debugLines: () => (game.scene.getScene('Debug') as DebugScene | null)?.lines() ?? null,
     titleLines: () => title()?.lines() ?? null,
     start: () => title()?.startGame(),
     hide: () => game.events.emit(Phaser.Core.Events.HIDDEN),

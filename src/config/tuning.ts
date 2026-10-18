@@ -304,3 +304,16 @@ export const PAUSE = {
   barHeight: 6,
   barGap: 2,
 } as const;
+
+/** The dev-only debug overlay (M2.7): frame rate and counts, left out of production builds. */
+export const DEBUG_OVERLAY = {
+  /** URL query parameter that shows it (?debug), and the key that toggles it. */
+  queryParam: 'debug',
+  toggleKey: '`',
+  /** Top-left corner, under the HUD row. */
+  x: 4,
+  y: 16,
+  /** Frames averaged for the frame rate; the worst frame among them is shown too. */
+  sampleFrames: 120,
+  alpha: 0.85,
+} as const;
