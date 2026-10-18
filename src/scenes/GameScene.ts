@@ -1,28 +1,31 @@
 import Phaser from 'phaser';
 import { IMAGES, SHEETS } from '../assets/manifest';
-import { DEFAULT_SEED, GAME_HEIGHT, GAME_WIDTH, PLAYER, SKY } from '../config/tuning';
-import { screenBounds, step, type Axis, type Point } from '../logic/movement';
-import { createRng, type Rng } from '../logic/rng';
+import {
+  COLORS,
+  DEFAULT_SEED,
+  GAME_HEIGHT,
+  GAME_WIDTH,
+  GROUND_Y,
+  SHAPES,
+  SKY,
+} from '../config/tuning';
+import { createWorld, type Phase, type World } from '../logic/world';
 
 /** Read-only view of the game state, used by the e2e test hook. */
 export interface GameSnapshot {
-  player: Point;
   seed: number;
+  phase: Phase;
+  timeMs: number;
+  score: number;
+  cities: boolean[];
+  bases: boolean[];
 }
 
-type Keys = Record<
-  'up' | 'down' | 'left' | 'right' | 'w' | 'a' | 's' | 'd',
-  Phaser.Input.Keyboard.Key
->;
-
-/** Placeholder scene: replace with the real game. */
+/** The game screen: draws the world from src/logic and passes input to it. */
 export class GameScene extends Phaser.Scene {
-  private player!: Phaser.GameObjects.Rectangle;
-  private pos: Point = { x: 0, y: 0 };
-  private keys!: Keys;
-  private rng!: Rng;
+  private world!: World;
   private seed = DEFAULT_SEED;
-  private readonly bounds = screenBounds(GAME_WIDTH, GAME_HEIGHT, PLAYER.size);
+  private defenses!: Phaser.GameObjects.Graphics;
 
   constructor() {
     super('Game');
@@ -40,65 +43,61 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     this.seed = seedFromUrl();
-    this.rng = createRng(this.seed);
-    // A seeded star field shows the RNG in use; same ?seed= gives the same stars.
-    for (let i = 0; i < 60; i++) {
-      this.add.rectangle(
-        this.rng.int(0, GAME_WIDTH - 1),
-        this.rng.int(0, GAME_HEIGHT - 1),
-        1,
-        1,
-        0xffffff,
-        0.6,
-      );
-    }
+    this.world = createWorld();
+
     // The distant skyline, tiled across the screen. Its own sky matches the game's sky colour.
     this.cameras.main.setBackgroundColor(SKY.color);
     this.add
       .tileSprite(0, SKY.skylineTop, GAME_WIDTH, SKY.skylineHeight, 'skylineFar')
       .setOrigin(0, 0);
-    this.pos = { x: GAME_WIDTH / 2, y: GAME_HEIGHT * PLAYER.startY };
-    this.player = this.add.rectangle(
-      this.pos.x,
-      this.pos.y,
-      PLAYER.size,
-      PLAYER.size,
-      PLAYER.color,
-    );
 
-    const kb = this.input.keyboard;
-    if (!kb) throw new Error('keyboard input is not available');
-    this.keys = kb.addKeys({
-      up: 'UP',
-      down: 'DOWN',
-      left: 'LEFT',
-      right: 'RIGHT',
-      w: 'W',
-      a: 'A',
-      s: 'S',
-      d: 'D',
-    }) as Keys;
-  }
+    this.add
+      .rectangle(0, GROUND_Y, GAME_WIDTH, GAME_HEIGHT - GROUND_Y, COLORS.ground)
+      .setOrigin(0, 0);
+    this.add.rectangle(0, GROUND_Y, GAME_WIDTH, 1, COLORS.groundEdge).setOrigin(0, 0);
 
-  override update(_time: number, deltaMs: number): void {
-    this.pos = step(this.pos, this.readAxis(), deltaMs / 1000, PLAYER.speed, this.bounds);
-    this.player.setPosition(this.pos.x, this.pos.y);
+    this.defenses = this.add.graphics();
+    this.drawDefenses();
   }
 
   snapshot(): GameSnapshot {
-    return { player: { ...this.pos }, seed: this.seed };
+    const w = this.world;
+    return {
+      seed: this.seed,
+      phase: w.phase,
+      timeMs: w.timeMs,
+      score: w.score,
+      cities: w.cities.map((c) => c.alive),
+      bases: w.bases.map((b) => b.alive),
+    };
   }
 
-  private readAxis(): Axis {
-    const k = this.keys;
-    const left = k.left.isDown || k.a.isDown;
-    const right = k.right.isDown || k.d.isDown;
-    const up = k.up.isDown || k.w.isDown;
-    const down = k.down.isDown || k.s.isDown;
-    return {
-      x: left === right ? 0 : left ? -1 : 1,
-      y: up === down ? 0 : up ? -1 : 1,
-    };
+  /** Cities and bases: standing, or rubble once destroyed. */
+  private drawDefenses(): void {
+    const g = this.defenses.clear();
+    for (const city of this.world.cities) {
+      if (city.alive) {
+        for (const [dx, w, h] of SHAPES.cityBlocks) {
+          g.fillStyle(COLORS.city).fillRect(city.x + dx, GROUND_Y - h, w, h);
+          g.fillStyle(COLORS.cityWindow).fillRect(city.x + dx + 1, GROUND_Y - h + 2, 1, 1);
+        }
+      } else {
+        g.fillStyle(COLORS.rubble);
+        g.fillRect(city.x - 9, GROUND_Y - SHAPES.rubbleHeight, 19, SHAPES.rubbleHeight);
+      }
+    }
+    for (const base of this.world.bases) {
+      g.fillStyle(base.alive ? COLORS.base : COLORS.baseDestroyed);
+      const h = base.alive ? SHAPES.baseHeight : SHAPES.rubbleHeight;
+      g.fillTriangle(
+        base.x - SHAPES.baseHalfWidth,
+        GROUND_Y,
+        base.x + SHAPES.baseHalfWidth,
+        GROUND_Y,
+        base.x,
+        GROUND_Y - h,
+      );
+    }
   }
 }
 

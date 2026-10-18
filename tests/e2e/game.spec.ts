@@ -40,16 +40,13 @@ test('boots with no console errors and no third-party requests', async ({ page }
   expect(watched.foreignRequests).toEqual([]);
 });
 
-test('arrow keys move the player and it stays on screen', async ({ page }) => {
+test('six cities and three bases stand on the ground at the start', async ({ page }) => {
   await openGame(page);
-  const start = (await snapshot(page)).player;
-  await page.keyboard.down('ArrowLeft');
-  await expect.poll(async () => (await snapshot(page)).player.x).toBeLessThan(start.x - 20);
-  await page.waitForTimeout(2000); // long enough to reach the edge
-  await page.keyboard.up('ArrowLeft');
-  const left = (await snapshot(page)).player;
-  expect(left.x).toBeGreaterThan(0);
-  expect(left.y).toBe(start.y);
+  const snap = await snapshot(page);
+  expect(snap.cities).toEqual([true, true, true, true, true, true]);
+  expect(snap.bases).toEqual([true, true, true]);
+  expect(snap.phase).toBe('playing');
+  expect(snap.score).toBe(0);
 });
 
 test('?seed= in the URL sets the random seed', async ({ page }) => {
