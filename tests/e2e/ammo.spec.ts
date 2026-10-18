@@ -17,11 +17,12 @@ test('each shot uses a missile from the base that fired', async ({ page }, info)
 test('an empty base shows OUT and the next nearest base fires instead', async ({ page }, info) => {
   for (let i = 0; i < AMMO; i++) await tapGame(page, info, 20, 40 + i * 4);
   await expect.poll(async () => (await snapshot(page)).ammo).toEqual([0, AMMO, AMMO]);
-  expect((await snapshot(page)).outLabels).toEqual([true, false, false]);
+  await expect.poll(async () => (await snapshot(page)).outLabels).toEqual([true, false, false]);
 
   await tapGame(page, info, 20, 60);
   await expect.poll(async () => (await snapshot(page)).ammo).toEqual([0, AMMO - 1, AMMO]);
-  expect((await snapshot(page)).lastShot?.baseIndex).toBe(1);
+  // The launch is recorded on the next frame, so wait for it rather than reading it at once.
+  await expect.poll(async () => (await snapshot(page)).lastShot?.baseIndex).toBe(1);
 });
 
 test('desktop keys fire from a chosen base at the mouse position', async ({ page }, info) => {
