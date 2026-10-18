@@ -1,6 +1,7 @@
 /** All gameplay numbers live here so they can be tuned in one place. */
-export const GAME_WIDTH = 256;
-export const GAME_HEIGHT = 320;
+/** Native resolution in game pixels (ADR-NW02). */
+export const GAME_WIDTH = 384;
+export const GAME_HEIGHT = 216;
 
 /** The placeholder player: a box moved with the arrow keys or WASD. */
 export const PLAYER = {
@@ -14,3 +15,13 @@ export const PLAYER = {
 
 /** Seed for the random number generator; override with ?seed= in the URL. */
 export const DEFAULT_SEED = 1;
+
+/** Background: night sky and the distant skyline (assets/backgrounds/skyline-far.png). */
+export const SKY = {
+  /** The skyline image's own sky colour, so the two blend with no seam. */
+  color: '#052c46',
+  /** Game-pixel row where the top of the skyline image sits. */
+  skylineTop: 72,
+  /** Rows of the 192-row image shown: everything above the street. */
+  skylineHeight: GAME_HEIGHT - 72,
+} as const;

@@ -1,3 +1,10 @@
+/* All text: Press Start 2P (SIL OFL 1.1), bundled; see CREDITS.md. */
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('./assets/fonts/PressStart2P-Regular.ttf') format('truetype');
+  font-display: block;
+}
+
 html,
 body {
   margin: 0;
@@ -16,4 +23,29 @@ body {
 
 canvas {
   image-rendering: pixelated;
+  /* Taps aim the game; they must not scroll or zoom the page. */
+  touch-action: none;
+}
+
+/* Landscape only (ADR-NW02): touch devices held upright get a message instead of the game. */
+#rotate {
+  display: none;
+}
+
+@media (orientation: portrait) and (pointer: coarse) {
+  #game {
+    visibility: hidden;
+  }
+
+  #rotate {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    color: #f2e9dc;
+    font: 16px/1.5 monospace;
+    text-align: center;
+  }
 }

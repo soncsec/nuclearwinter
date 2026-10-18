@@ -1,11 +1,22 @@
 import Phaser from 'phaser';
 import './style.css';
 import { GAME_HEIGHT, GAME_WIDTH } from './config/tuning';
-import { integerZoom } from './logic/scaling';
+import { deviceZoom } from './logic/scaling';
+import { FONT_FAMILY } from './assets/manifest';
 import { GameScene } from './scenes/GameScene';
 
+// Whole-number zoom in device pixels, given to Phaser in CSS pixels (ADR-NW02).
 const zoomForWindow = (): number =>
-  integerZoom(window.innerWidth, window.innerHeight, GAME_WIDTH, GAME_HEIGHT);
+  deviceZoom(
+    window.innerWidth,
+    window.innerHeight,
+    window.devicePixelRatio,
+    GAME_WIDTH,
+    GAME_HEIGHT,
+  ).cssZoom;
+
+// Phaser draws text once, so the font must be ready before the first scene starts.
+await document.fonts.load(`8px ${FONT_FAMILY}`);
 
 export const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -16,7 +27,7 @@ export const game = new Phaser.Game({
   pixelArt: true,
   roundPixels: true,
   scale: {
-    // Whole-number zoom keeps pixels crisp; the page's CSS centers the canvas.
+    // Whole-number device-pixel zoom keeps pixels crisp; the page's CSS centers the canvas.
     mode: Phaser.Scale.NONE,
     zoom: zoomForWindow(),
   },
