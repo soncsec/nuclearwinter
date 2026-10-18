@@ -42,21 +42,32 @@ test('a phone in landscape gets a large zoom, not 1', async ({ page }, info) => 
   expect(width).toBeCloseTo(640, 0);
 });
 
+test('a tablet in landscape gets a large zoom too', async ({ page }, info) => {
+  test.skip(info.project.name !== 'tablet', 'tablet viewport only');
+  await openGame(page);
+  const width = await page.evaluate(
+    () => document.querySelector('#game canvas')?.getBoundingClientRect().width ?? 0,
+  );
+  // 1180x820 CSS at 2x = 2360x1640 device pixels: zoom 6, so 2304 device = 1152 CSS pixels.
+  expect(width).toBeCloseTo(1152, 0);
+});
+
 test('a touch device held upright shows the rotate message instead of the game', async ({
   page,
 }, info) => {
-  test.skip(info.project.name !== 'phone', 'touch devices only');
-  await page.setViewportSize({ width: 390, height: 844 });
+  test.skip(!info.project.use.hasTouch, 'touch devices only');
+  const { width, height } = info.project.use.viewport ?? { width: 844, height: 390 };
+  await page.setViewportSize({ width: height, height: width });
   await page.goto('./');
   await expect(page.getByText('Turn your device sideways to play')).toBeVisible();
   await expect(page.locator('#game')).toBeHidden();
-  await page.setViewportSize({ width: 844, height: 390 });
+  await page.setViewportSize({ width, height });
   await expect(page.getByText('Turn your device sideways to play')).toBeHidden();
   await expect(page.locator('#game canvas')).toBeVisible();
 });
 
 test('desktop windows never show the rotate message, even when tall', async ({ page }, info) => {
-  test.skip(info.project.name === 'phone', 'desktop only');
+  test.skip(Boolean(info.project.use.hasTouch), 'desktop only');
   await page.setViewportSize({ width: 600, height: 1000 });
   await page.goto('./');
   await expect(page.locator('#game')).toBeVisible();

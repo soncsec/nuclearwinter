@@ -7,7 +7,7 @@
 | Milestone | Status |
 |---|---|
 | M0 Setup | Done |
-| M1 Walking skeleton (one wave, released to production) | In progress |
+| M1 Walking skeleton (one wave, released to production) | Built and released; waiting for owner acceptance |
 | M2 Core game | Not started |
 | M3 Enemies | Not started |
 | M4 The Nuclear Winter look | Not started |
@@ -48,8 +48,8 @@
 - [x] M1.5 Tap or click fires a counter-missile that explodes at the target; the blast destroys warheads
 - [x] M1.6 One wave of plain warheads that destroy cities on impact; score per kill
 - [x] M1.7 Wave end, game over and restart
-- [ ] M1.8 Playwright: boots clean under the production CSP, whole-number scaling on desktop and phone viewports, firing and a kill through the test hook
-- [ ] M1.9 First production release with smoke test; ZAP and static check results reported
+- [x] M1.8 Playwright: boots clean under the production CSP, whole-number scaling on desktop and phone viewports, firing and a kill through the test hook
+- [x] M1.9 First production release with smoke test; ZAP and static check results reported
 
 **Acceptance criteria:** the owner plays one wave on staging and production, on desktop and on a phone; CI green; frame rate measured on a phone and recorded.
 
