@@ -59,7 +59,7 @@ Read `PROJECT.md` (scope), `ARCHITECTURE.md` (decisions), and `ROADMAP.md` (curr
 - No runtime requests to third-party hosts. Everything is bundled and served from our own origin.
 - Pin exact dependency versions, at least two weeks old, and commit the lockfile.
 - Run static checks (CodeQL, ESLint, `npm audit`, Gitleaks) and a dynamic check (OWASP ZAP baseline) before any deployment or configuration change, and report the results.
-- No personal data is collected. localStorage holds only the high score (and the "reduce flashing" setting, approved 2026-10-18).
+- No personal data is collected. localStorage holds only the high scores (normal and daily challenge) and the settings (reduce flashing, vibration), approved 2026-10-18.
 - Never put credentials in code, the chat, or CI logs; use GitHub Actions secrets.
 
 ## Releasing
