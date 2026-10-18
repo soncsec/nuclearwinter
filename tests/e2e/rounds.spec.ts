@@ -48,7 +48,7 @@ test('the game starts at wave 1 and says so', async ({ page }) => {
   const snap = await snapshot(page);
   expect(snap.wave).toBe(1);
   expect(snap.hudWave).toBe('WAVE 1');
-  expect(snap.waveBanner).toBe('WAVE 1');
+  expect(snap.bannersShown).toEqual(['WAVE 1']);
   // The banner goes away after a moment; the HUD keeps the number.
   await expect.poll(async () => (await snapshot(page)).waveBanner, { timeout: 5_000 }).toBeNull();
   expect((await snapshot(page)).hudWave).toBe('WAVE 1');
@@ -73,10 +73,12 @@ test('after a cleared wave, a tap starts the next wave with cities, score and re
   expect((await snapshot(page)).ammo).toEqual([9, 10, 10]);
 
   await tapToRestart(page, info);
+  // The HUD and banner update on the frame after the tap, so wait for them.
+  await expect.poll(async () => (await snapshot(page)).hudWave).toBe('WAVE 2');
   const snap = await snapshot(page);
   expect(snap.wave).toBe(2);
   expect(snap.hudWave).toBe('WAVE 2');
-  expect(snap.waveBanner).toBe('WAVE 2');
+  expect(snap.bannersShown).toEqual(['WAVE 1', 'WAVE 2']);
   expect(snap.message).toEqual([]);
   expect(snap.cities).toEqual([false, true, true, true, true, true]);
   expect(snap.ammo).toEqual([10, 10, 10]);

@@ -43,6 +43,8 @@ export interface GameSnapshot {
   hudWave: string;
   /** The "WAVE n" banner at the start of a wave, or null when hidden. */
   waveBanner: string | null;
+  /** Every banner shown this game, oldest first, so tests needn't race the banner's timer. */
+  bannersShown: string[];
   timeMs: number;
   score: number;
   cities: boolean[];
@@ -86,6 +88,7 @@ export class GameScene extends Phaser.Scene {
   private waveBanner!: Phaser.GameObjects.Text;
   /** Real time (ms) when the "WAVE n" banner should hide. */
   private bannerUntil = 0;
+  private bannersShown: string[] = [];
   private messageLines: Phaser.GameObjects.Text[] = [];
   private messagePanel!: Phaser.GameObjects.Rectangle;
   private outLabels: Phaser.GameObjects.Text[] = [];
@@ -181,6 +184,7 @@ export class GameScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0)
       .setVisible(false);
+    this.bannersShown = [];
     this.showWave();
 
     // One input path for mouse and touch (ADR-NW06): fire where the pointer goes down.
@@ -263,6 +267,7 @@ export class GameScene extends Phaser.Scene {
       wave: w.wave.number,
       hudWave: this.waveText.text,
       waveBanner: this.waveBanner.visible ? this.waveBanner.text : null,
+      bannersShown: [...this.bannersShown],
       timeMs: w.timeMs,
       score: w.score,
       cities: w.cities.map((c) => c.alive),
@@ -350,6 +355,7 @@ export class GameScene extends Phaser.Scene {
     const label = `WAVE ${this.world.wave.number}`;
     this.waveText.setText(label);
     this.waveBanner.setText(label).setVisible(true);
+    this.bannersShown.push(label);
     this.bannerUntil = this.time.now + SCREENS.waveBannerMs;
   }
 
