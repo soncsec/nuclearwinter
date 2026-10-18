@@ -63,19 +63,93 @@ export const WARHEAD = {
   spawnY: -4,
 } as const;
 
-/** One wave of plain warheads (M1). M2 replaces this with the wave formula (ADR-NW05). */
-export const WAVE_1 = {
-  count: 12,
+/** How one wave launches its warheads. */
+export interface WaveSpec {
+  /** Warheads in the wave. */
+  readonly count: number;
   /** Pixels per second, picked between these for each warhead. */
-  speedMin: 14,
-  speedMax: 22,
-  /** Delay before the first launch and between launches, in milliseconds. */
-  firstLaunchMs: 1000,
-  launchGapMinMs: 700,
-  launchGapMaxMs: 2200,
+  readonly speedMin: number;
+  readonly speedMax: number;
+  /** Delay before the first launch, in milliseconds. */
+  readonly firstLaunchMs: number;
+  /** Delay between launches, picked between these, in milliseconds. */
+  readonly launchGapMinMs: number;
+  readonly launchGapMaxMs: number;
   /** Chance that a launch is a pair fired together. */
-  pairChance: 0.25,
-} as const;
+  readonly pairChance: number;
+}
+
+/**
+ * Waves (ADR-NW05): the first few are set by hand; after them, each wave adds the formula's
+ * steps to the last hand-set wave, up to the caps. Endless.
+ */
+export const WAVES: {
+  readonly handSet: readonly WaveSpec[];
+  readonly formula: {
+    readonly countStep: number;
+    readonly countMax: number;
+    readonly speedStep: number;
+    readonly speedMinCap: number;
+    readonly speedMaxCap: number;
+    readonly gapStepMs: number;
+    readonly gapMinFloorMs: number;
+    readonly gapMaxFloorMs: number;
+    readonly pairStep: number;
+    readonly pairMax: number;
+  };
+} = {
+  handSet: [
+    // Wave 1: the M1 wave, slow and sparse.
+    {
+      count: 12,
+      speedMin: 14,
+      speedMax: 22,
+      firstLaunchMs: 1000,
+      launchGapMinMs: 700,
+      launchGapMaxMs: 2200,
+      pairChance: 0.25,
+    },
+    {
+      count: 14,
+      speedMin: 16,
+      speedMax: 25,
+      firstLaunchMs: 1000,
+      launchGapMinMs: 650,
+      launchGapMaxMs: 2000,
+      pairChance: 0.3,
+    },
+    {
+      count: 16,
+      speedMin: 18,
+      speedMax: 28,
+      firstLaunchMs: 1000,
+      launchGapMinMs: 600,
+      launchGapMaxMs: 1800,
+      pairChance: 0.35,
+    },
+    {
+      count: 18,
+      speedMin: 20,
+      speedMax: 31,
+      firstLaunchMs: 1000,
+      launchGapMinMs: 550,
+      launchGapMaxMs: 1600,
+      pairChance: 0.4,
+    },
+  ],
+  formula: {
+    countStep: 2,
+    countMax: 30,
+    speedStep: 2,
+    speedMinCap: 45,
+    speedMaxCap: 60,
+    gapStepMs: 40,
+    gapMinFloorMs: 300,
+    gapMaxFloorMs: 700,
+    pairStep: 0.03,
+    pairMax: 0.6,
+  },
+};
 
 /** Points. */
 export const SCORE = {
@@ -176,6 +250,8 @@ export const SCREENS = {
   promptY: 124,
   /** The prompt blinks on and off every this many milliseconds. */
   promptBlinkMs: 500,
+  /** How long "WAVE n" shows at the start of each wave, in milliseconds. */
+  waveBannerMs: 1500,
   /** Dark band behind the message, so it reads clearly over the skyline. */
   panelTop: 74,
   panelHeight: 66,

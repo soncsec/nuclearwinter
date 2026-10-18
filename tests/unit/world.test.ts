@@ -7,7 +7,7 @@ import {
   INTERCEPTOR,
   SCORE,
   STEP_MS,
-  WAVE_1,
+  WAVES,
 } from '../../src/config/tuning';
 import { blastDurationMs } from '../../src/logic/blast';
 import { createRng, type Rng } from '../../src/logic/rng';
@@ -19,8 +19,15 @@ import {
   launchWarhead,
   nearestBase,
   step,
+  startNextWave,
   type World,
 } from '../../src/logic/world';
+
+const WAVE_1 =
+  WAVES.handSet[0] ??
+  (() => {
+    throw new Error('no wave 1');
+  })();
 
 /** A world with no scheduled wave, so tests control every warhead. */
 function quietWorld(): World {
@@ -303,7 +310,7 @@ describe('waves and game over', () => {
     fire(w, { x: 100, y: 100 });
     run(w, rng, 5000);
     expect(w.phase).toBe('waveCleared');
-    expect(drainEvents(w)).toContainEqual({ type: 'waveCleared' });
+    expect(drainEvents(w)).toContainEqual({ type: 'waveCleared', number: 1 });
   });
 
   it('nothing moves after the game ends', () => {
@@ -313,5 +320,68 @@ describe('waves and game over', () => {
     const before = JSON.stringify(w);
     step(w, createRng(1), STEP_MS);
     expect(JSON.stringify(w)).toBe(before);
+  });
+});
+
+describe('next wave', () => {
+  function clearedWorld(): World {
+    const w = quietWorld();
+    run(w, createRng(1), STEP_MS * 2);
+    expect(w.phase).toBe('waveCleared');
+    return w;
+  }
+
+  it('reports which wave was cleared', () => {
+    const w = quietWorld();
+    run(w, createRng(1), STEP_MS * 2);
+    expect(drainEvents(w)).toContainEqual({ type: 'waveCleared', number: 1 });
+  });
+
+  it('only starts after a wave is cleared', () => {
+    const w = quietWorld();
+    expect(startNextWave(w)).toBe(false);
+    expect(w.wave.number).toBe(1);
+    w.phase = 'gameOver';
+    expect(startNextWave(w)).toBe(false);
+  });
+
+  it('moves to the next, harder wave and keeps score and cities', () => {
+    const w = clearedWorld();
+    w.score = 500;
+    const [, second] = w.cities;
+    if (second) second.alive = false;
+    drainEvents(w);
+    expect(startNextWave(w)).toBe(true);
+    expect(w.phase).toBe('playing');
+    expect(w.wave.number).toBe(2);
+    expect(w.wave.spec).toEqual(WAVES.handSet[1]);
+    expect(w.wave.toLaunch).toBe(WAVES.handSet[1]?.count);
+    expect(w.wave.nextLaunchMs).toBe(w.timeMs + (WAVES.handSet[1]?.firstLaunchMs ?? 0));
+    expect(w.score).toBe(500);
+    expect(w.cities.map((c) => c.alive)).toEqual([true, false, true, true, true, true]);
+    expect(drainEvents(w)).toEqual([{ type: 'waveStarted', number: 2 }]);
+  });
+
+  it('reloads standing bases; destroyed ones stay down', () => {
+    const w = clearedWorld();
+    const [left, centre, right] = w.bases;
+    if (!left || !centre || !right) throw new Error('bases missing');
+    left.ammo = 0;
+    centre.ammo = 3;
+    right.alive = false;
+    right.ammo = 0;
+    startNextWave(w);
+    expect(w.bases.map((b) => [b.alive, b.ammo])).toEqual([
+      [true, BASES.ammo],
+      [true, BASES.ammo],
+      [false, 0],
+    ]);
+  });
+
+  it('the next wave launches its warheads', () => {
+    const w = clearedWorld();
+    startNextWave(w);
+    run(w, createRng(3), (WAVES.handSet[1]?.firstLaunchMs ?? 0) + STEP_MS);
+    expect(w.warheads.length).toBeGreaterThan(0);
   });
 });

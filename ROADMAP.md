@@ -58,7 +58,7 @@
 **Demonstrable result:** a complete game of classic Missile Command.
 
 - [x] M2.1 Ammo per base, nearest-base firing, empty-base handling, optional desktop base keys
-- [ ] M2.2 Wave formula with hand-set first waves (ADR-NW05)
+- [x] M2.2 Wave formula with hand-set first waves (ADR-NW05)
 - [ ] M2.3 End-of-wave bonus count-up (leftover ammo, surviving cities), bases restored
 - [ ] M2.4 Bonus city every 10,000 points
 - [ ] M2.5 High score saved in localStorage
