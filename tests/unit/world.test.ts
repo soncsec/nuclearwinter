@@ -310,7 +310,9 @@ describe('waves and game over', () => {
     fire(w, { x: 100, y: 100 });
     run(w, rng, 5000);
     expect(w.phase).toBe('waveCleared');
-    expect(drainEvents(w)).toContainEqual({ type: 'waveCleared', number: 1 });
+    expect(drainEvents(w)).toContainEqual(
+      expect.objectContaining({ type: 'waveCleared', number: 1 }),
+    );
   });
 
   it('nothing moves after the game ends', () => {
@@ -334,7 +336,9 @@ describe('next wave', () => {
   it('reports which wave was cleared', () => {
     const w = quietWorld();
     run(w, createRng(1), STEP_MS * 2);
-    expect(drainEvents(w)).toContainEqual({ type: 'waveCleared', number: 1 });
+    expect(drainEvents(w)).toContainEqual(
+      expect.objectContaining({ type: 'waveCleared', number: 1 }),
+    );
   });
 
   it('only starts after a wave is cleared', () => {
@@ -362,7 +366,7 @@ describe('next wave', () => {
     expect(drainEvents(w)).toEqual([{ type: 'waveStarted', number: 2 }]);
   });
 
-  it('reloads standing bases; destroyed ones stay down', () => {
+  it('rebuilds destroyed bases and reloads every base', () => {
     const w = clearedWorld();
     const [left, centre, right] = w.bases;
     if (!left || !centre || !right) throw new Error('bases missing');
@@ -374,7 +378,7 @@ describe('next wave', () => {
     expect(w.bases.map((b) => [b.alive, b.ammo])).toEqual([
       [true, BASES.ammo],
       [true, BASES.ammo],
-      [false, 0],
+      [true, BASES.ammo],
     ]);
   });
 
@@ -383,5 +387,52 @@ describe('next wave', () => {
     startNextWave(w);
     run(w, createRng(3), (WAVES.handSet[1]?.firstLaunchMs ?? 0) + STEP_MS);
     expect(w.warheads.length).toBeGreaterThan(0);
+  });
+});
+
+describe('end-of-wave bonus', () => {
+  it('pays for standing cities and missiles left in standing bases', () => {
+    const w = quietWorld();
+    const [c0, c1] = w.cities;
+    if (c0) c0.alive = false;
+    if (c1) c1.alive = false;
+    const [b0, b1, b2] = w.bases;
+    if (!b0 || !b1 || !b2) throw new Error('bases missing');
+    b0.ammo = 3;
+    b1.ammo = 0;
+    // A destroyed base's missiles never count (its ammo is cleared when it falls).
+    b2.alive = false;
+    b2.ammo = 0;
+    run(w, createRng(1), STEP_MS * 2);
+    expect(w.phase).toBe('waveCleared');
+    const expected = 4 * SCORE.citySaved + 3 * SCORE.missileLeft;
+    expect(w.score).toBe(expected);
+    const cleared = drainEvents(w).find((e) => e.type === 'waveCleared');
+    expect(cleared).toEqual({
+      type: 'waveCleared',
+      number: 1,
+      bonus: {
+        citiesSaved: 4,
+        missilesLeft: 3,
+        cityPoints: 4 * SCORE.citySaved,
+        missilePoints: 3 * SCORE.missileLeft,
+        total: expected,
+      },
+    });
+  });
+
+  it('adds to the score already earned', () => {
+    const w = quietWorld();
+    w.score = 250;
+    run(w, createRng(1), STEP_MS * 2);
+    expect(w.score).toBe(250 + 6 * SCORE.citySaved + 3 * BASES.ammo * SCORE.missileLeft);
+  });
+
+  it('pays nothing when the game is lost', () => {
+    const w = quietWorld();
+    w.cities.forEach((c) => (c.alive = false));
+    run(w, createRng(1), STEP_MS * 2);
+    expect(w.phase).toBe('gameOver');
+    expect(w.score).toBe(0);
   });
 });

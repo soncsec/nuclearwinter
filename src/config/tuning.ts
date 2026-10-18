@@ -154,6 +154,10 @@ export const WAVES: {
 /** Points. */
 export const SCORE = {
   warhead: 25,
+  /** End-of-wave bonus for each missile left in a standing base (arcade value). */
+  missileLeft: 5,
+  /** End-of-wave bonus for each city still standing (arcade value). */
+  citySaved: 100,
 } as const;
 
 /** Colours for shapes drawn in code (placeholders until the M4 art pass). */
@@ -244,10 +248,13 @@ export const EFFECTS = {
 export const SCREENS = {
   /** Taps are ignored for this long after the message appears, so a late shot can't skip it. */
   restartDelayMs: 1000,
-  /** Rows of the message's three lines, in game pixels. */
-  titleY: 84,
-  detailY: 100,
+  /** Rows of the message's lines, in game pixels: title, two detail lines, prompt. */
+  titleY: 80,
+  detailY: 94,
+  detail2Y: 106,
   promptY: 124,
+  /** The end-of-wave bonus counts up on screen over this many milliseconds. */
+  bonusCountMs: 900,
   /** The prompt blinks on and off every this many milliseconds. */
   promptBlinkMs: 500,
   /** How long "WAVE n" shows at the start of each wave, in milliseconds. */

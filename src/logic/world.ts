@@ -11,6 +11,7 @@ import {
 import { blastDurationMs, blastRadius } from './blast';
 import { clamp, distance, moveToward, type Point } from './geometry';
 import type { Rng } from './rng';
+import { waveBonus, type WaveBonus } from './scoring';
 import { waveSpec } from './waves';
 
 /**
@@ -66,7 +67,7 @@ export type GameEvent =
   | { readonly type: 'impact'; readonly at: Point }
   | { readonly type: 'cityDestroyed'; readonly index: number; readonly at: Point }
   | { readonly type: 'baseDestroyed'; readonly index: number; readonly at: Point }
-  | { readonly type: 'waveCleared'; readonly number: number }
+  | { readonly type: 'waveCleared'; readonly number: number; readonly bonus: WaveBonus }
   | { readonly type: 'waveStarted'; readonly number: number }
   | { readonly type: 'gameOver' };
 
@@ -118,13 +119,16 @@ function newWave(number: number, timeMs: number): WaveState {
 }
 
 /**
- * Starts the next wave after one is cleared: harder launches, and standing bases reloaded.
+ * Starts the next wave after one is cleared: harder launches, and every base rebuilt and reloaded.
  * Returns false (and changes nothing) unless the wave has just been cleared.
  */
 export function startNextWave(world: World): boolean {
   if (world.phase !== 'waveCleared') return false;
   world.wave = newWave(world.wave.number + 1, world.timeMs);
-  for (const b of world.bases) if (b.alive) b.ammo = BASES.ammo;
+  for (const b of world.bases) {
+    b.alive = true;
+    b.ammo = BASES.ammo;
+  }
   world.phase = 'playing';
   world.events.push({ type: 'waveStarted', number: world.wave.number });
   return true;
@@ -308,7 +312,12 @@ function updatePhase(world: World): void {
     world.interceptors.length === 0 &&
     world.blasts.length === 0;
   if (quiet) {
+    const bonus = waveBonus(
+      world.cities.filter((c) => c.alive).length,
+      world.bases.reduce((sum, b) => sum + (b.alive ? b.ammo : 0), 0),
+    );
+    world.score += bonus.total;
     world.phase = 'waveCleared';
-    world.events.push({ type: 'waveCleared', number: world.wave.number });
+    world.events.push({ type: 'waveCleared', number: world.wave.number, bonus });
   }
 }
