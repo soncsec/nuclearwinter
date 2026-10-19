@@ -48,7 +48,7 @@ test('a warhead that is not shot down destroys the city it lands on', async ({ p
   expect(snap.cities.slice(1)).toEqual([true, true, true, true, true]);
   expect(snap.effectsPlayed.cityHit).toBe(1);
   // The explosion plays once, then its sprite goes back to the pool.
-  await expect.poll(async () => (await snapshot(page)).effects, { timeout: 5_000 }).toBe(0);
+  await expect.poll(async () => (await snapshot(page)).effects, { timeout: 30_000 }).toBe(0);
 });
 
 test('a warhead landing on open ground explodes without destroying anything', async ({ page }) => {

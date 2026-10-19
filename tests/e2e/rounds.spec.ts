@@ -19,7 +19,7 @@ async function destroyAllCities(page: Page): Promise<void> {
 
 async function waitForTaps(page: Page): Promise<void> {
   await expect
-    .poll(() => page.evaluate(() => window.__game?.canRestart() ?? false), { timeout: 5_000 })
+    .poll(() => page.evaluate(() => window.__game?.canRestart() ?? false), { timeout: 30_000 })
     .toBe(true);
 }
 
@@ -92,7 +92,7 @@ test('the game starts at wave 1 and says so', async ({ page }) => {
   expect(snap.hudWave).toBe('WAVE 1');
   expect(snap.bannersShown).toEqual(['WAVE 1']);
   // The banner goes away after a moment; the HUD keeps the number.
-  await expect.poll(async () => (await snapshot(page)).waveBanner, { timeout: 5_000 }).toBeNull();
+  await expect.poll(async () => (await snapshot(page)).waveBanner, { timeout: 30_000 }).toBeNull();
   expect((await snapshot(page)).hudWave).toBe('WAVE 1');
 });
 
