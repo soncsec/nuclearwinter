@@ -488,6 +488,11 @@ export const SHAKE = {
   durationMs: 250,
 } as const;
 
+/** Phone vibration (M4.8): on/off pattern in milliseconds when a city or base is destroyed. */
+export const VIBRATION = {
+  cityHit: [90, 50, 60],
+} as const;
+
 const SPARK_COLORS = [0xffb347, 0xfff3d0, 0xff7a2a] as const;
 
 /** Spark particles (M4.2): one fixed pool, a burst for each kind of explosion. */
