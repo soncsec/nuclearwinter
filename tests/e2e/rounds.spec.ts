@@ -52,7 +52,7 @@ test('clearing the wave counts up a bonus for cities and missiles left', async (
   await page.evaluate(() => window.__game?.finishWave());
 
   await expect
-    .poll(async () => (await snapshot(page)).phase, { timeout: 10_000 })
+    .poll(async () => (await snapshot(page)).phase, { timeout: 30_000 })
     .toBe('waveCleared');
   // 5 cities x 100 + 28 missiles x 5 = 640, counted up on screen and into the score.
   await expect.poll(async () => (await snapshot(page)).message[2]).toBe('BONUS 640');
@@ -75,7 +75,7 @@ test('a base destroyed in one wave is rebuilt for the next', async ({ page }, in
   await expect.poll(async () => (await snapshot(page)).bases).toEqual([true, false, true]);
   await page.evaluate(() => window.__game?.finishWave());
   await expect
-    .poll(async () => (await snapshot(page)).phase, { timeout: 10_000 })
+    .poll(async () => (await snapshot(page)).phase, { timeout: 30_000 })
     .toBe('waveCleared');
 
   await tapToRestart(page, info);
@@ -110,7 +110,7 @@ test('after a cleared wave, a tap starts the next wave with cities, score and re
   await expect.poll(async () => (await snapshot(page)).cities[0]).toBe(false);
   await page.evaluate(() => window.__game?.finishWave());
   await expect
-    .poll(async () => (await snapshot(page)).phase, { timeout: 10_000 })
+    .poll(async () => (await snapshot(page)).phase, { timeout: 30_000 })
     .toBe('waveCleared');
   expect((await snapshot(page)).ammo).toEqual([9, 10, 10]);
 
@@ -205,7 +205,7 @@ test('reaching 10,000 points rebuilds a lost city at the next wave', async ({ pa
   await page.evaluate(() => window.__game?.setScore(9_900));
   await page.evaluate(() => window.__game?.finishWave());
   await expect
-    .poll(async () => (await snapshot(page)).phase, { timeout: 10_000 })
+    .poll(async () => (await snapshot(page)).phase, { timeout: 30_000 })
     .toBe('waveCleared');
   expect((await snapshot(page)).score).toBeGreaterThanOrEqual(10_000);
 

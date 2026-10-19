@@ -28,7 +28,12 @@ export class DebugScene extends Phaser.Scene {
       })
       .setAlpha(DEBUG_OVERLAY.alpha)
       .setVisible(this.shown);
+    // Phaser can hand the same browser event over more than once (seen in WebKit), which would
+    // toggle the overlay off and straight back on, so each event is handled only once.
+    const seenKeys = new WeakSet<KeyboardEvent>();
     this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
+      if (seenKeys.has(e)) return;
+      seenKeys.add(e);
       if (e.key === DEBUG_OVERLAY.toggleKey && !e.repeat) this.toggle();
     });
   }

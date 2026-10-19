@@ -84,9 +84,9 @@ jobs:
         run: npm run build
 
       - name: Install Playwright browsers (version from the lockfile)
-        run: npx playwright install --with-deps chromium firefox
+        run: npx playwright install --with-deps chromium firefox webkit
 
-      - name: End-to-end tests (Chromium and Firefox)
+      - name: End-to-end tests (Chromium, Firefox and WebKit)
         run: npm run test:e2e
 
       - name: Upload Playwright report on failure

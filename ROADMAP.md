@@ -65,7 +65,7 @@
 - [x] M2.6 Title screen, pause and resume, game-over screen
 - [x] M2.7 Dev-only debug overlay (wave, counts, fps)
 - [ ] M2.8 Wave score multiplier: kill points and the end-of-wave bonus rise every two waves up to a cap (approved 2026-10-18)
-- [ ] M2.9 WebKit added to the Playwright matrix, desktop and phone (approved 2026-10-18)
+- [x] M2.9 WebKit added to the Playwright matrix, desktop and phone (approved 2026-10-18)
 
 **Acceptance criteria:** a full game from title to game over and back; scoring rules (including the multiplier) unit tested; high score survives a reload; CI runs WebKit.
 
