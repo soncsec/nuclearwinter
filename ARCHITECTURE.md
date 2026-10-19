@@ -89,6 +89,13 @@ No dependencies are added beyond the template's.
 - **Context:** The art pack has no audio; the owner wants audio after the MVP.
 - **Decision:** No audio in version 1.0. Game events are emitted in one place, so sound can be hooked in later (M6). The source (generated with Web Audio or a CC0 pack) is decided with the owner before M6.
 
+### ADR-NW08: Separate random streams for gameplay and visuals — *Accepted* (owner, 2026-10-18)
+
+- **Context:** A seed must replay a game exactly, and the daily challenge (M3.5) depends on it. If particles, ash or screen shake drew from the gameplay RNG, any visual change would alter the waves.
+- **Decision:** Two seeded generators. Gameplay (launches, targets, enemy choices) uses one, and only `src/logic/` advances it. Visual effects use a second, seeded from the same seed but never read by the rules.
+- **Alternatives:** One generator for everything (visual tweaks change gameplay); `Math.random()` for visuals (unseeded, so screenshots and e2e runs differ).
+- **Tradeoffs:** Two generators to pass around. In return, the look can change freely without touching gameplay or the daily challenge.
+
 ## 3. Code structure
 
 ```
