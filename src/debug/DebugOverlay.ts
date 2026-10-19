@@ -51,7 +51,7 @@ export class DebugScene extends Phaser.Scene {
       lines.push(
         `WAVE ${s.wave}${s.paused ? ' PAUSED' : ''}  TO LAUNCH ${s.toLaunch}`,
         `WARHEADS ${s.warheads}  MISSILES ${s.interceptors}  BLASTS ${s.blasts}`,
-        `FX ${s.effects}/${s.effectPool}`,
+        `RAIDERS ${s.raiders}  FX ${s.effects}/${s.effectPool}`,
       );
     }
     this.text.setText(lines);

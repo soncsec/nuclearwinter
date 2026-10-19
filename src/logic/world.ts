@@ -5,6 +5,7 @@ import {
   GROUND_Y,
   INTERCEPTOR,
   MIRV,
+  RAIDERS,
   SCORE,
   WARHEAD,
   type WaveSpec,
@@ -45,6 +46,21 @@ export interface Warhead {
   readonly stemFrom?: Point;
 }
 
+export type RaiderKind = 'bomber' | 'satellite';
+
+/** A bomber or satellite crossing the sky and dropping warheads (M3.2). */
+export interface Raider {
+  readonly id: number;
+  readonly kind: RaiderKind;
+  pos: Point;
+  /** 1 flies right, -1 flies left. */
+  readonly dir: 1 | -1;
+  /** Pixels per second. */
+  readonly speed: number;
+  dropsLeft: number;
+  nextDropMs: number;
+}
+
 export interface Interceptor {
   readonly id: number;
   readonly baseIndex: number;
@@ -79,6 +95,13 @@ export type GameEvent =
   /** New bonus cities were earned (`count`), banked until a city needs rebuilding. */
   | { readonly type: 'bonusCity'; readonly count: number }
   | { readonly type: 'cityRebuilt'; readonly index: number }
+  | { readonly type: 'raiderLaunched'; readonly kind: RaiderKind }
+  | {
+      readonly type: 'raiderDestroyed';
+      readonly kind: RaiderKind;
+      readonly at: Point;
+      readonly points: number;
+    }
   | { readonly type: 'gameOver' };
 
 export interface WaveState {
@@ -90,6 +113,9 @@ export interface WaveState {
   toLaunch: number;
   /** Game time of the next launch. */
   nextLaunchMs: number;
+  /** Bombers and satellites still to come this wave, and when the next one does. */
+  raidersToLaunch: number;
+  nextRaiderMs: number;
 }
 
 export interface World {
@@ -99,6 +125,7 @@ export interface World {
   readonly cities: City[];
   readonly bases: Base[];
   warheads: Warhead[];
+  raiders: Raider[];
   interceptors: Interceptor[];
   blasts: Blast[];
   wave: WaveState;
@@ -119,6 +146,7 @@ export function createWorld(): World {
     cities: CITIES.xs.map((x) => ({ x, alive: true })),
     bases: BASES.xs.map((x) => ({ x, alive: true, ammo: BASES.ammo })),
     warheads: [],
+    raiders: [],
     interceptors: [],
     blasts: [],
     wave: newWave(1, 0),
@@ -131,7 +159,42 @@ export function createWorld(): World {
 
 function newWave(number: number, timeMs: number): WaveState {
   const spec = waveSpec(number);
-  return { number, spec, toLaunch: spec.count, nextLaunchMs: timeMs + spec.firstLaunchMs };
+  return {
+    number,
+    spec,
+    toLaunch: spec.count,
+    nextLaunchMs: timeMs + spec.firstLaunchMs,
+    raidersToLaunch: raiderCount(number),
+    nextRaiderMs: timeMs + RAIDERS.firstSpawnMs,
+  };
+}
+
+/** How many bombers and satellites a wave sends. */
+export function raiderCount(waveNumber: number, rule: typeof RAIDERS = RAIDERS): number {
+  if (waveNumber < rule.firstWave) return 0;
+  const extra = Math.floor((waveNumber - rule.firstWave) / rule.countStepWaves);
+  return Math.min(rule.countMax, rule.countBase + extra);
+}
+
+/**
+ * Sends a bomber or satellite across the sky at row `y`, from the left edge when `dir` is 1
+ * and from the right when it is -1. Its first drop comes once it is over the play area.
+ */
+export function launchRaider(world: World, kind: RaiderKind, y: number, dir: 1 | -1): Raider {
+  const spec = RAIDERS[kind];
+  const x = dir === 1 ? -RAIDERS.offscreen : GAME_WIDTH + RAIDERS.offscreen;
+  const raider: Raider = {
+    id: world.nextId++,
+    kind,
+    pos: { x, y },
+    dir,
+    speed: spec.speed,
+    dropsLeft: spec.drops,
+    nextDropMs: world.timeMs,
+  };
+  world.raiders.push(raider);
+  world.events.push({ type: 'raiderLaunched', kind });
+  return raider;
 }
 
 /**
@@ -247,11 +310,14 @@ export function step(world: World, rng: Rng, dtMs: number): void {
   if (world.phase !== 'playing') return;
   world.timeMs += dtMs;
   launchDueWarheads(world, rng);
+  launchDueRaiders(world, rng);
   moveInterceptors(world, dtMs);
   moveWarheads(world, dtMs);
   splitWarheads(world, rng);
+  moveRaiders(world, rng, dtMs);
   ageBlasts(world, dtMs);
   destroyWarheadsInBlasts(world);
+  destroyRaidersInBlasts(world);
   updatePhase(world);
 }
 
@@ -311,6 +377,61 @@ function moveWarheads(world: World, dtMs: number): void {
     w.pos = pos;
     if (arrived) hitGround(world, pos);
     return !arrived;
+  });
+}
+
+/** Raiders draw on the RNG only from their first wave, so wave 1 replays unchanged. */
+function launchDueRaiders(world: World, rng: Rng): void {
+  const wave = world.wave;
+  while (wave.raidersToLaunch > 0 && world.timeMs >= wave.nextRaiderMs) {
+    const sat = RAIDERS.satellite;
+    const kind: RaiderKind =
+      wave.number >= sat.firstWave && rng.next() < sat.chance ? 'satellite' : 'bomber';
+    const spec = RAIDERS[kind];
+    const dir = rng.next() < 0.5 ? 1 : -1;
+    launchRaider(world, kind, rng.range(spec.yMin, spec.yMax), dir);
+    wave.raidersToLaunch--;
+    wave.nextRaiderMs += rng.range(RAIDERS.gapMinMs, RAIDERS.gapMaxMs);
+  }
+}
+
+/** Raiders fly straight across, drop warheads over the play area, and leave at the far side. */
+function moveRaiders(world: World, rng: Rng, dtMs: number): void {
+  const spec = world.wave.spec;
+  world.raiders = world.raiders.filter((r) => {
+    r.pos = { x: r.pos.x + (r.dir * r.speed * dtMs) / 1000, y: r.pos.y };
+    const over = r.pos.x >= RAIDERS.dropMargin && r.pos.x <= GAME_WIDTH - RAIDERS.dropMargin;
+    if (over && r.dropsLeft > 0 && world.timeMs >= r.nextDropMs) {
+      launchWarhead(
+        world,
+        { ...r.pos },
+        pickTarget(world, rng),
+        rng.range(spec.speedMin, spec.speedMax),
+      );
+      r.dropsLeft--;
+      r.nextDropMs = world.timeMs + rng.range(RAIDERS.dropGapMinMs, RAIDERS.dropGapMaxMs);
+    }
+    const gone =
+      r.dir === 1 ? r.pos.x > GAME_WIDTH + RAIDERS.offscreen : r.pos.x < -RAIDERS.offscreen;
+    return !gone;
+  });
+}
+
+/** A blast that touches a raider destroys it, for points and a blast of its own. */
+function destroyRaidersInBlasts(world: World): void {
+  world.raiders = world.raiders.filter((r) => {
+    const reach = RAIDERS[r.kind].hitRadius;
+    const caught = world.blasts.some(
+      (b) => distance(b.center, r.pos) <= blastRadius(b.ageMs) + reach,
+    );
+    if (caught) {
+      const points = RAIDERS[r.kind].points * waveMultiplier(world.wave.number);
+      world.score += points;
+      const at = { ...r.pos };
+      world.events.push({ type: 'raiderDestroyed', kind: r.kind, at, points });
+      addBlast(world, at, 'chain');
+    }
+    return !caught;
   });
 }
 
@@ -389,6 +510,8 @@ function updatePhase(world: World): void {
   }
   const quiet =
     world.wave.toLaunch === 0 &&
+    world.wave.raidersToLaunch === 0 &&
+    world.raiders.length === 0 &&
     world.warheads.length === 0 &&
     world.interceptors.length === 0 &&
     world.blasts.length === 0;
