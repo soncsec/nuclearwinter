@@ -78,6 +78,9 @@
 - [x] M3.3 Smart bombs that steer around blasts
 - [ ] M3.4 Enemy mix added to the wave formula, with their point values
 - [ ] M3.5 Daily challenge: same waves for everyone each day (seed from the UTC date), separate best score (moved from M2 on 2026-10-18, so the enemy roster is final first)
+- [ ] M3.6 Separate random streams for gameplay and visuals (ADR-NW08), before M4 adds particles
+- [ ] M3.7 Build number on the title screen, so play-test reports name the build
+- [ ] M3.8 Tuning session with the owner, using the debug overlay; the agreed numbers go into `tuning.ts`
 
 **Acceptance criteria:** each enemy's behaviour unit tested; each appears by the wave set in `tuning.ts`; the daily challenge gives the same waves for the same date; owner play-test.
 
@@ -85,11 +88,12 @@
 
 **Demonstrable result:** the finished visual style.
 
+- [ ] M4.0 Look mock-up: one screenshot of the finished style (ash, darkening sky, glow, city-hit flash) approved by the owner before the effects are built
 - [ ] M4.1 Final art: skyline layers, cities, bases, explosions, night sky
 - [ ] M4.2 Glowing missile trails and blast glow (additive), particles
 - [ ] M4.3 Screen shake and the city-hit flash, kept under the safe-flash limit
 - [ ] M4.4 Falling ash and a darkening sky that thicken as cities are lost
-- [ ] M4.5 "Reduce flashing" setting, saved in localStorage
+- [ ] M4.5 Settings screen: "reduce flashing" (also turns off screen shake) and vibration, saved in localStorage; mute joins it in M6
 - [ ] M4.6 Press Start 2P HUD and screens
 - [ ] M4.7 Optional bloom filter, switched off automatically when the frame rate drops (ADR-NW04)
 - [ ] M4.8 Phone vibration on city hits (Vibration API where supported), with a setting
