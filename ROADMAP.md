@@ -80,7 +80,7 @@
 - [x] M3.3 Smart bombs that steer around blasts
 - [x] M3.4 Enemy mix added to the wave formula, with their point values
 - [x] M3.5 Daily challenge: same waves for everyone each day (seed from the UTC date), separate best score (moved from M2 on 2026-10-18, so the enemy roster is final first)
-- [ ] M3.6 Separate random streams for gameplay and visuals (ADR-NW08), before M4 adds particles
+- [x] M3.6 Separate random streams for gameplay and visuals (ADR-NW08), before M4 adds particles
 - [x] M3.7 Build number on the title screen, so play-test reports name the build
 - [ ] M3.8 Tuning session with the owner, using the debug overlay; the agreed numbers go into `tuning.ts`
 

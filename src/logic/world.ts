@@ -13,7 +13,7 @@ import {
 } from '../config/tuning';
 import { blastDurationMs, blastRadius } from './blast';
 import { clamp, distance, moveToward, type Point } from './geometry';
-import type { Rng } from './rng';
+import type { RandomStreams, Rng } from './rng';
 import { bonusCitiesEarned, waveBonus, waveMultiplier, type WaveBonus } from './scoring';
 import { waveSpec } from './waves';
 
@@ -327,15 +327,15 @@ export function drainEvents(world: World): GameEvent[] {
 }
 
 /** Advances the game by `dtMs` milliseconds. */
-export function step(world: World, rng: Rng, dtMs: number): void {
+export function step(world: World, rng: RandomStreams, dtMs: number): void {
   if (world.phase !== 'playing') return;
   world.timeMs += dtMs;
-  launchDueWarheads(world, rng);
-  launchDueRaiders(world, rng);
+  launchDueWarheads(world, rng.spawn);
+  launchDueRaiders(world, rng.spawn);
   moveInterceptors(world, dtMs);
   moveWarheads(world, dtMs);
-  splitWarheads(world, rng);
-  moveRaiders(world, rng, dtMs);
+  splitWarheads(world, rng.aim);
+  moveRaiders(world, rng.aim, dtMs);
   ageBlasts(world, dtMs);
   destroyWarheadsInBlasts(world);
   destroyRaidersInBlasts(world);
@@ -353,16 +353,20 @@ function launchDueWarheads(world: World, rng: Rng): void {
     const smartChance = spec.smartBombChance;
     for (let i = 0; i < count; i++) {
       const origin = { x: rng.range(0, GAME_WIDTH), y: WARHEAD.spawnY };
-      const target = pickTarget(world, rng);
+      const target = pickTarget(world, rng.next());
       const speed = rng.range(spec.speedMin, spec.speedMax);
-      const split =
-        chance > 0 && rng.next() < chance
-          ? {
-              atY: rng.range(MIRV.splitYMin, MIRV.splitYMax),
-              count: rng.int(MIRV.childrenMin, MIRV.childrenMax),
-            }
-          : undefined;
-      const smart = !split && smartChance > 0 && rng.next() < smartChance;
+      // From the waves that have them, each launch draws the same four numbers whatever happens,
+      // so the schedule never shifts.
+      let split: { atY: number; count: number } | undefined;
+      let smart = false;
+      if (chance > 0 || smartChance > 0) {
+        const kindRoll = rng.next();
+        const atY = rng.range(MIRV.splitYMin, MIRV.splitYMax);
+        const count = rng.int(MIRV.childrenMin, MIRV.childrenMax);
+        const smartRoll = rng.next();
+        if (kindRoll < chance) split = { atY, count };
+        else smart = smartRoll < smartChance;
+      }
       launchWarhead(world, origin, target, speed, split ? { split } : smart ? { smart } : {});
     }
     wave.toLaunch -= count;
@@ -373,15 +377,20 @@ function launchDueWarheads(world: World, rng: Rng): void {
 /**
  * Warheads aim at a surviving city or base; with none left, anywhere on the ground.
  * Targets in `avoid` are skipped while others remain, so a MIRV's warheads fan out.
+ * `roll` is one random number in [0, 1): one draw whatever is standing, so the stream it came
+ * from stays in step.
  */
-function pickTarget(world: World, rng: Rng, avoid: readonly number[] = []): Point {
+function pickTarget(world: World, roll: number, avoid: readonly number[] = []): Point {
   const xs = [
     ...world.cities.filter((c) => c.alive).map((c) => c.x),
     ...world.bases.filter((b) => b.alive).map((b) => b.x),
   ];
   const fresh = xs.filter((x) => !avoid.includes(x));
   const choices = fresh.length > 0 ? fresh : xs;
-  const x = choices.length > 0 ? rng.pick(choices) : rng.range(0, GAME_WIDTH);
+  const x =
+    choices.length > 0
+      ? (choices[Math.min(choices.length - 1, Math.floor(roll * choices.length))] ?? 0)
+      : roll * GAME_WIDTH;
   return { x, y: GROUND_Y };
 }
 
@@ -431,7 +440,7 @@ function moveRaiders(world: World, rng: Rng, dtMs: number): void {
       launchWarhead(
         world,
         { ...r.pos },
-        pickTarget(world, rng),
+        pickTarget(world, rng.next()),
         rng.range(spec.speedMin, spec.speedMax),
       );
       r.dropsLeft--;
@@ -471,7 +480,7 @@ function splitWarheads(world: World, rng: Rng): void {
     const at = { ...parent.pos };
     const aimed: number[] = [];
     for (let i = 0; i < count; i++) {
-      const target = pickTarget(world, rng, aimed);
+      const target = pickTarget(world, rng.next(), aimed);
       aimed.push(target.x);
       launchWarhead(world, at, target, parent.speed, {
         stemFrom: parent.stemFrom ?? parent.origin,

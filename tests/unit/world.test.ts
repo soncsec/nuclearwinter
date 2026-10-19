@@ -7,12 +7,13 @@ import {
   INTERCEPTOR,
   SCORE,
   STEP_MS,
+  WARHEAD,
   WAVES,
 } from '../../src/config/tuning';
 import { blastDurationMs } from '../../src/logic/blast';
 import { waveSpec } from '../../src/logic/waves';
 import { firstWaveWith } from './mix';
-import { createRng, type Rng } from '../../src/logic/rng';
+import { createStreams, type RandomStreams } from '../../src/logic/rng';
 import {
   aimPoint,
   createWorld,
@@ -38,7 +39,7 @@ function quietWorld(): World {
   return w;
 }
 
-function run(world: World, rng: Rng, ms: number): void {
+function run(world: World, rng: RandomStreams, ms: number): void {
   for (let t = 0; t < ms && world.phase === 'playing'; t += STEP_MS) step(world, rng, STEP_MS);
 }
 
@@ -91,7 +92,7 @@ describe('firing', () => {
 
   it('reports the launch and explodes at the target', () => {
     const w = quietWorld();
-    const rng = createRng(1);
+    const rng = createStreams(1);
     fire(w, { x: 192, y: 100 });
     expect(drainEvents(w)).toEqual([{ type: 'launch', baseIndex: 1, target: { x: 192, y: 100 } }]);
     run(w, rng, 1000); // 96 px at 240 px/s takes 0.4 s
@@ -136,7 +137,7 @@ describe('ammo', () => {
     const w = quietWorld();
     const x = BASES.xs[1] ?? 0;
     launchWarhead(w, { x, y: GROUND_Y - 1 }, { x, y: GROUND_Y }, 600);
-    run(w, createRng(1), 100);
+    run(w, createStreams(1), 100);
     expect(w.bases[1]).toMatchObject({ alive: false, ammo: 0 });
   });
 });
@@ -174,7 +175,7 @@ describe('choosing a base', () => {
 describe('blasts and warheads', () => {
   it('a blast destroys a warhead inside it, scores, and leaves a chain blast', () => {
     const w = quietWorld();
-    const rng = createRng(1);
+    const rng = createStreams(1);
     launchWarhead(w, { x: 192, y: 100 }, { x: 192, y: GROUND_Y }, 0.001);
     w.blasts.push({ id: 99, center: { x: 192, y: 105 }, ageMs: BLAST.growMs, kind: 'player' });
     step(w, rng, STEP_MS);
@@ -194,7 +195,7 @@ describe('blasts and warheads', () => {
     w.wave = { ...w.wave, number: 5 };
     launchWarhead(w, { x: 192, y: 100 }, { x: 192, y: GROUND_Y }, 0.001);
     w.blasts.push({ id: 99, center: { x: 192, y: 105 }, ageMs: BLAST.growMs, kind: 'player' });
-    step(w, createRng(1), STEP_MS);
+    step(w, createStreams(1), STEP_MS);
     expect(w.score).toBe(3 * SCORE.warhead);
     expect(drainEvents(w)).toContainEqual(
       expect.objectContaining({ type: 'warheadDestroyed', points: 3 * SCORE.warhead }),
@@ -205,14 +206,14 @@ describe('blasts and warheads', () => {
     const w = quietWorld();
     launchWarhead(w, { x: 50, y: 50 }, { x: 50, y: GROUND_Y }, 0.001);
     w.blasts.push({ id: 99, center: { x: 192, y: 50 }, ageMs: BLAST.growMs, kind: 'player' });
-    step(w, createRng(1), STEP_MS);
+    step(w, createStreams(1), STEP_MS);
     expect(w.warheads).toHaveLength(1);
     expect(w.score).toBe(0);
   });
 
   it('chain blasts set off nearby warheads', () => {
     const w = quietWorld();
-    const rng = createRng(1);
+    const rng = createStreams(1);
     launchWarhead(w, { x: 100, y: 50 }, { x: 100, y: GROUND_Y }, 0.001);
     launchWarhead(w, { x: 100 + BLAST.maxRadius - 2, y: 50 }, { x: 120, y: GROUND_Y }, 0.001);
     w.blasts.push({ id: 99, center: { x: 98, y: 50 }, ageMs: BLAST.growMs, kind: 'player' });
@@ -225,7 +226,7 @@ describe('blasts and warheads', () => {
     const w = quietWorld();
     w.blasts.push({ id: 99, center: { x: 100, y: 50 }, ageMs: 0, kind: 'player' });
     launchWarhead(w, { x: 300, y: 0 }, { x: 300, y: GROUND_Y }, 0.001); // keeps the wave going
-    run(w, createRng(1), blastDurationMs() + STEP_MS);
+    run(w, createStreams(1), blastDurationMs() + STEP_MS);
     expect(w.blasts).toEqual([]);
   });
 });
@@ -235,7 +236,7 @@ describe('impacts', () => {
     const w = quietWorld();
     const x = CITIES.xs[0];
     launchWarhead(w, { x, y: GROUND_Y - 1 }, { x, y: GROUND_Y }, 600);
-    step(w, createRng(1), STEP_MS);
+    step(w, createStreams(1), STEP_MS);
     expect(w.cities[0]?.alive).toBe(false);
     expect(drainEvents(w)).toContainEqual({
       type: 'cityDestroyed',
@@ -248,7 +249,7 @@ describe('impacts', () => {
     const w = quietWorld();
     const x = BASES.xs[2];
     launchWarhead(w, { x, y: GROUND_Y - 1 }, { x, y: GROUND_Y }, 600);
-    step(w, createRng(1), STEP_MS);
+    step(w, createStreams(1), STEP_MS);
     expect(w.bases[2]?.alive).toBe(false);
     expect(drainEvents(w)).toContainEqual({
       type: 'baseDestroyed',
@@ -260,7 +261,7 @@ describe('impacts', () => {
   it('a warhead landing on open ground just explodes', () => {
     const w = quietWorld();
     launchWarhead(w, { x: 176, y: GROUND_Y - 1 }, { x: 176, y: GROUND_Y }, 600);
-    step(w, createRng(1), STEP_MS);
+    step(w, createStreams(1), STEP_MS);
     expect(w.cities.every((c) => c.alive) && w.bases.every((b) => b.alive)).toBe(true);
     expect(drainEvents(w)).toContainEqual({ type: 'impact', at: { x: 176, y: GROUND_Y } });
   });
@@ -269,7 +270,7 @@ describe('impacts', () => {
 describe('waves and game over', () => {
   it('launches the whole wave, aimed at the ground, from above the screen', () => {
     const w = createWorld();
-    const rng = createRng(7);
+    const rng = createStreams(7);
     let launched = 0;
     const seen = new Set<number>();
     for (let t = 0; t < 60_000 && w.phase === 'playing'; t += STEP_MS) {
@@ -291,7 +292,7 @@ describe('waves and game over', () => {
   it('the same seed plays out the same way', () => {
     const play = (seed: number): string => {
       const w = createWorld();
-      const rng = createRng(seed);
+      const rng = createStreams(seed);
       run(w, rng, 20_000);
       return JSON.stringify({ c: w.cities, b: w.bases, h: w.warheads, p: w.phase });
     };
@@ -304,14 +305,14 @@ describe('waves and game over', () => {
     w.cities.forEach((c, i) => (c.alive = i === 5));
     const x = CITIES.xs[5];
     launchWarhead(w, { x, y: GROUND_Y - 1 }, { x, y: GROUND_Y }, 600);
-    step(w, createRng(1), STEP_MS);
+    step(w, createStreams(1), STEP_MS);
     expect(w.phase).toBe('gameOver');
     expect(drainEvents(w)).toContainEqual({ type: 'gameOver' });
   });
 
   it('with nothing defended, a wave destroys the cities and the game ends', () => {
     const w = createWorld();
-    run(w, createRng(2), 120_000);
+    run(w, createStreams(2), 120_000);
     // Twelve warheads at nine targets can't always reach every city, so either outcome is
     // possible, but the wave must finish.
     expect(['gameOver', 'waveCleared']).toContain(w.phase);
@@ -320,7 +321,7 @@ describe('waves and game over', () => {
 
   it('clears the wave once every warhead, missile and blast is gone', () => {
     const w = quietWorld();
-    const rng = createRng(1);
+    const rng = createStreams(1);
     fire(w, { x: 100, y: 100 });
     run(w, rng, 5000);
     expect(w.phase).toBe('waveCleared');
@@ -334,7 +335,7 @@ describe('waves and game over', () => {
     launchWarhead(w, { x: 50, y: 0 }, { x: 50, y: GROUND_Y }, 20);
     w.phase = 'gameOver';
     const before = JSON.stringify(w);
-    step(w, createRng(1), STEP_MS);
+    step(w, createStreams(1), STEP_MS);
     expect(JSON.stringify(w)).toBe(before);
   });
 });
@@ -342,14 +343,14 @@ describe('waves and game over', () => {
 describe('next wave', () => {
   function clearedWorld(): World {
     const w = quietWorld();
-    run(w, createRng(1), STEP_MS * 2);
+    run(w, createStreams(1), STEP_MS * 2);
     expect(w.phase).toBe('waveCleared');
     return w;
   }
 
   it('reports which wave was cleared', () => {
     const w = quietWorld();
-    run(w, createRng(1), STEP_MS * 2);
+    run(w, createStreams(1), STEP_MS * 2);
     expect(drainEvents(w)).toContainEqual(
       expect.objectContaining({ type: 'waveCleared', number: 1 }),
     );
@@ -399,7 +400,7 @@ describe('next wave', () => {
   it('the next wave launches its warheads', () => {
     const w = clearedWorld();
     startNextWave(w);
-    run(w, createRng(3), (WAVES.handSet[1]?.firstLaunchMs ?? 0) + STEP_MS);
+    run(w, createStreams(3), (WAVES.handSet[1]?.firstLaunchMs ?? 0) + STEP_MS);
     expect(w.warheads.length).toBeGreaterThan(0);
   });
 });
@@ -417,7 +418,7 @@ describe('end-of-wave bonus', () => {
     // A destroyed base's missiles never count (its ammo is cleared when it falls).
     b2.alive = false;
     b2.ammo = 0;
-    run(w, createRng(1), STEP_MS * 2);
+    run(w, createStreams(1), STEP_MS * 2);
     expect(w.phase).toBe('waveCleared');
     const expected = 4 * SCORE.citySaved + 3 * SCORE.missileLeft;
     expect(w.score).toBe(expected);
@@ -439,21 +440,21 @@ describe('end-of-wave bonus', () => {
   it('adds to the score already earned', () => {
     const w = quietWorld();
     w.score = 250;
-    run(w, createRng(1), STEP_MS * 2);
+    run(w, createStreams(1), STEP_MS * 2);
     expect(w.score).toBe(250 + 6 * SCORE.citySaved + 3 * BASES.ammo * SCORE.missileLeft);
   });
 
   it('is multiplied on later waves (2x on wave 3)', () => {
     const w = quietWorld();
     w.wave = { ...w.wave, number: 3 };
-    run(w, createRng(1), STEP_MS * 2);
+    run(w, createStreams(1), STEP_MS * 2);
     expect(w.score).toBe(2 * (6 * SCORE.citySaved + 3 * BASES.ammo * SCORE.missileLeft));
   });
 
   it('pays nothing when the game is lost', () => {
     const w = quietWorld();
     w.cities.forEach((c) => (c.alive = false));
-    run(w, createRng(1), STEP_MS * 2);
+    run(w, createStreams(1), STEP_MS * 2);
     expect(w.phase).toBe('gameOver');
     expect(w.score).toBe(0);
   });
@@ -465,7 +466,7 @@ describe('bonus cities', () => {
     // Nothing left to launch: no warheads, and from wave 2 no bombers or satellites either.
     w.wave.toLaunch = 0;
     w.wave.raidersToLaunch = 0;
-    run(w, createRng(1), STEP_MS * 2);
+    run(w, createStreams(1), STEP_MS * 2);
     expect(w.phase).toBe('waveCleared');
     w.score = score;
     drainEvents(w);
@@ -524,7 +525,7 @@ describe('MIRVs (splitting warheads)', () => {
     launchWarhead(w, { x: 100, y: 0 }, { x: 100, y: GROUND_Y }, 600, {
       split: { atY: 60, count: 3 },
     });
-    run(w, createRng(3), 200);
+    run(w, createStreams(3), 200);
     const events = drainEvents(w);
     const split = events.find((e) => e.type === 'warheadSplit');
     expect(split).toMatchObject({ type: 'warheadSplit', count: 3 });
@@ -544,7 +545,7 @@ describe('MIRVs (splitting warheads)', () => {
       launchWarhead(w, { x: 100, y: 0 }, { x: 100, y: GROUND_Y }, 600, {
         split: { atY: 30, count: 3 },
       });
-      run(w, createRng(seed), 100);
+      run(w, createStreams(seed), 100);
       const xs = w.warheads.map((h) => h.target.x);
       expect(new Set(xs).size).toBe(3);
     }
@@ -557,7 +558,7 @@ describe('MIRVs (splitting warheads)', () => {
     launchWarhead(w, { x: 100, y: 0 }, { x: 100, y: GROUND_Y }, 600, {
       split: { atY: 30, count: 2 },
     });
-    run(w, createRng(2), 100);
+    run(w, createStreams(2), 100);
     expect(w.warheads.map((h) => h.target.x)).toEqual([CITIES.xs[0], CITIES.xs[0]]);
   });
 
@@ -567,7 +568,7 @@ describe('MIRVs (splitting warheads)', () => {
       split: { atY: 120, count: 3 },
     });
     w.blasts.push({ id: 99, center: { x: 192, y: 22 }, ageMs: BLAST.growMs, kind: 'player' });
-    run(w, createRng(1), STEP_MS * 2);
+    run(w, createStreams(1), STEP_MS * 2);
     expect(w.warheads).toEqual([]);
     expect(w.score).toBe(SCORE.warhead);
     expect(drainEvents(w).some((e) => e.type === 'warheadSplit')).toBe(false);
@@ -578,10 +579,10 @@ describe('MIRVs (splitting warheads)', () => {
     launchWarhead(w, { x: 100, y: 0 }, { x: 100, y: GROUND_Y }, 600, {
       split: { atY: 30, count: 2 },
     });
-    run(w, createRng(5), 100);
+    run(w, createStreams(5), 100);
     expect(w.phase).toBe('playing');
     expect(w.warheads).toHaveLength(2);
-    run(w, createRng(5), 2000);
+    run(w, createStreams(5), 2000);
     expect(w.warheads).toEqual([]);
   });
 
@@ -596,7 +597,7 @@ describe('MIRVs (splitting warheads)', () => {
         nextLaunchMs: 0,
         raidersToLaunch: 0,
       };
-      const rng = createRng(11);
+      const rng = createStreams(11);
       let mirvs = 0;
       for (let i = 0; i < 4000 && w.wave.toLaunch > 0; i++) {
         const before = w.warheads.length;
@@ -609,5 +610,52 @@ describe('MIRVs (splitting warheads)', () => {
     expect(countMirvs(1)).toBe(0);
     expect(countMirvs(firstWaveWith('mirvChance') - 1)).toBe(0);
     expect(countMirvs(firstWaveWith('mirvChance') + 10)).toBeGreaterThan(0);
+  });
+});
+
+describe('the launch schedule (ADR-NW08)', () => {
+  /** Plays wave 8 (every enemy type) for 60 s and logs every launch from the top of the sky. */
+  function launches(seed: number, shoot: boolean): string[] {
+    const w = createWorld();
+    w.wave = { ...w.wave, number: 8, spec: waveSpec(8), toLaunch: 40, nextLaunchMs: 0 };
+    w.wave.raidersToLaunch = waveSpec(8).raiders;
+    w.wave.nextRaiderMs = 2000;
+    const streams = createStreams(seed);
+    const log: string[] = [];
+    const seen = new Set<number>();
+    for (let t = 0; t < 60_000; t += STEP_MS) {
+      if (shoot && Math.round(t) % 400 < STEP_MS) {
+        // A player firing all over the sky, destroying warheads, MIRVs and raiders early.
+        for (const b of w.bases) b.ammo = 10;
+        fire(w, { x: (t / 7) % 384, y: 40 + ((t / 13) % 120) });
+      }
+      step(w, streams, STEP_MS);
+      // Keep the game going in both runs, so only the shooting differs.
+      for (const c of w.cities) c.alive = true;
+      for (const h of w.warheads) {
+        if (seen.has(h.id) || h.origin.y !== WARHEAD.spawnY) continue;
+        seen.add(h.id);
+        const kind = h.smart ? 'smart' : h.split ? `mirv${h.split.count}` : 'plain';
+        log.push(`${Math.round(w.timeMs)} ${h.origin.x.toFixed(3)} ${h.speed.toFixed(3)} ${kind}`);
+      }
+      for (const e of drainEvents(w)) {
+        if (e.type === 'raiderLaunched') log.push(`${Math.round(w.timeMs)} raider ${e.kind}`);
+      }
+    }
+    return log;
+  }
+
+  it('is the same whatever the player does, so a seed always sends the same waves', () => {
+    const calm = launches(20261019, false);
+    const busy = launches(20261019, true);
+    expect(calm.length).toBeGreaterThan(30);
+    expect(calm.some((l) => l.includes('mirv'))).toBe(true);
+    expect(calm.some((l) => l.includes('smart'))).toBe(true);
+    expect(calm.some((l) => l.includes('raider'))).toBe(true);
+    expect(busy).toEqual(calm);
+  });
+
+  it('differs between seeds', () => {
+    expect(launches(1, false)).not.toEqual(launches(2, false));
   });
 });
