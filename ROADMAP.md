@@ -108,7 +108,7 @@
 
 - [ ] M5.1 Touch tuning on real phones and tablets (target size, no page scrolling or zooming)
 - [ ] M5.2 Automatic quality setting and frame-rate check on phones
-- [ ] M5.3 Load-time check (under 2 seconds on the local network)
+- [x] M5.3 Load-time check (under 2 seconds on the local network): `scripts/load-time.mjs`; production 2026-10-19, 10 first visits: median 1.36 s, worst 1.52 s, 496 KiB (measured while the dev machine was heavily loaded)
 - [x] M5.4 Portal card image (256×192) and status `live` (portal PR #25, merged and released 2026-10-18 at the owner's request)
 - [ ] M5.5 Release 1.0 to production; production check workflow passes
 
