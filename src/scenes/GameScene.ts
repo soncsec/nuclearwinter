@@ -326,9 +326,18 @@ export class GameScene extends Phaser.Scene {
     this.world.wave.raidersToLaunch = 0;
   }
 
-  /** For the test hook: sends a bomber or satellite across at row `y` (dir 1 flies right). */
-  testLaunchRaider(kind: RaiderKind, y: number, dir: 1 | -1): void {
-    launchRaider(this.world, kind, y, dir);
+  /**
+   * For the test hook: sends a bomber or satellite across at row `y` (dir 1 flies right),
+   * from the screen's edge or, with `x`, from that column.
+   */
+  testLaunchRaider(kind: RaiderKind, y: number, dir: 1 | -1, x?: number): void {
+    const r = launchRaider(this.world, kind, y, dir);
+    if (x !== undefined) r.pos = { x, y };
+  }
+
+  /** For the test hook: fires at a point, as a tap there would, in the same frame as the call. */
+  testFireAt(target: Point): void {
+    fire(this.world, target);
   }
 
   /** For the test hook: whether a tap would start a new game now. */

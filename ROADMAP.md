@@ -74,7 +74,7 @@
 **Demonstrable result:** all four enemy types appear as the waves get harder.
 
 - [x] M3.1 Splitting warheads (MIRVs)
-- [ ] M3.2 Bombers and satellites that cross the sky and launch warheads
+- [x] M3.2 Bombers and satellites that cross the sky and launch warheads
 - [ ] M3.3 Smart bombs that steer around blasts
 - [ ] M3.4 Enemy mix added to the wave formula, with their point values
 - [ ] M3.5 Daily challenge: same waves for everyone each day (seed from the UTC date), separate best score (moved from M2 on 2026-10-18, so the enemy roster is final first)

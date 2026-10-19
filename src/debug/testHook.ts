@@ -31,8 +31,10 @@ export interface TestHook {
     speed: number,
     split?: { atY: number; count: number },
   ): void;
-  /** Sends a bomber or satellite across the sky at row `y`; `dir` 1 flies right. */
-  launchRaider(kind: 'bomber' | 'satellite', y: number, dir: 1 | -1): void;
+  /** Sends a bomber or satellite across the sky at row `y`; `dir` 1 flies right; `x` to start mid-screen. */
+  launchRaider(kind: 'bomber' | 'satellite', y: number, dir: 1 | -1, x?: number): void;
+  /** Fires at a point as a tap would, so a test can time a shot exactly. */
+  fireAt(target: Point): void;
   /** Stops the wave launching warheads but keeps it open, so a test controls every one. */
   holdWave(): void;
   /** Launches nothing more, so the wave is cleared once the sky is empty. */
@@ -68,7 +70,8 @@ export function installTestHook(game: Phaser.Game): void {
     hide: () => game.events.emit(Phaser.Core.Events.HIDDEN),
     launchWarhead: (origin, target, speed, split) =>
       scene().testLaunchWarhead(origin, target, speed, split),
-    launchRaider: (kind, y, dir) => scene().testLaunchRaider(kind, y, dir),
+    launchRaider: (kind, y, dir, x) => scene().testLaunchRaider(kind, y, dir, x),
+    fireAt: (target) => scene().testFireAt(target),
     holdWave: () => scene().testHoldWave(),
     finishWave: () => scene().testFinishWave(),
     canRestart: () => scene().testCanRestart(),
