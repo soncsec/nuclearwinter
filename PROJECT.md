@@ -80,6 +80,7 @@ A complete, replayable game, live on the portal, playable on desktop, phone and 
 | 2026-10-18 | WebKit added to the Playwright matrix (iPhones only run WebKit) |
 | 2026-10-18 | GitHub auto-merge turned on: the owner approves and enables it per PR; the PR merges when CI passes |
 | 2026-10-18 | Portal releases for this game's card need no approval per release |
+| 2026-10-19 | The debug overlay is available in production with `?debug` (separate chunk, loaded only on request), so phones can be measured |
 | 2026-10-19 | From the product review: separate random streams (ADR-NW08), build number on the title, tuning session after the enemies, look mock-up before M4, one settings screen ("reduce flashing" also stops screen shake) |
 
 ## 9. Open questions

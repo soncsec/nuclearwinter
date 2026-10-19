@@ -113,7 +113,7 @@ src/
 ├── scenes/            Title and Game (HUD, pause, wave and game-over screens): thin, call into logic/
 │   └── ui.ts          backdrop, centred text and localStorage access shared by the scenes
 └── debug/             testHook.ts: window.__game for Playwright (e2e build only);
-                       DebugOverlay.ts: frame rate and counts (dev and e2e builds only)
+                       DebugOverlay.ts: frame rate and counts (dev and e2e builds; production only with ?debug, as a separate chunk)
 public/assets/         art copied from legacy/ (listed in CREDITS.md) and the font
 tests/
 ├── unit/              Vitest, 80% coverage floor on src/logic
