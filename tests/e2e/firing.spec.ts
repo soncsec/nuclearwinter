@@ -28,7 +28,7 @@ test('the counter-missile explodes and the blast destroys a warhead for points',
   );
   await expect.poll(async () => (await snapshot(page)).warheads.length).toBe(1);
   await tapGame(page, info, 120, 62);
-  await expect.poll(async () => (await snapshot(page)).score, { timeout: 10_000 }).toBe(25);
+  await expect.poll(async () => (await snapshot(page)).score, { timeout: 30_000 }).toBe(25);
   const snap = await snapshot(page);
   expect(snap.warheads).toEqual([]);
   expect(snap.hudScore).toBe('000025');
@@ -43,7 +43,7 @@ test('a warhead that is not shot down destroys the city it lands on', async ({ p
     (ground) => window.__game?.launchWarhead({ x: 72, y: ground - 30 }, { x: 72, y: ground }, 120),
     GROUND_Y,
   );
-  await expect.poll(async () => (await snapshot(page)).cities[0], { timeout: 10_000 }).toBe(false);
+  await expect.poll(async () => (await snapshot(page)).cities[0], { timeout: 30_000 }).toBe(false);
   const snap = await snapshot(page);
   expect(snap.cities.slice(1)).toEqual([true, true, true, true, true]);
   expect(snap.effectsPlayed.cityHit).toBe(1);
@@ -58,7 +58,7 @@ test('a warhead landing on open ground explodes without destroying anything', as
     GROUND_Y,
   );
   await expect
-    .poll(async () => (await snapshot(page)).effectsPlayed.impact, { timeout: 10_000 })
+    .poll(async () => (await snapshot(page)).effectsPlayed.impact, { timeout: 30_000 })
     .toBe(1);
   const snap = await snapshot(page);
   expect(snap.cities).toEqual([true, true, true, true, true, true]);

@@ -9,7 +9,9 @@ export default defineConfig({
   forbidOnly: isCI,
   retries: 0,
   reporter: isCI ? [['list'], ['html', { open: 'never' }]] : 'list',
-  timeout: 30_000,
+  // Three WebKit instances on a small machine slow the game loop, so game-time waits are long.
+  timeout: 60_000,
+  expect: { timeout: 15_000 },
   use: {
     baseURL: `http://localhost:${PORT}/`,
     trace: 'retain-on-failure',
@@ -18,6 +20,9 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    // WebKit is what every iPhone and iPad browser runs (M2.9).
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+    { name: 'iphone', use: { ...devices['iPhone 13 landscape'] } },
     {
       // A landscape phone (ADR-NW02): small CSS viewport, 3x pixel ratio, touch.
       name: 'phone',
