@@ -16,8 +16,8 @@ export interface TestHook {
   debugLines(): string[] | null;
   /** The title screen's lines, top to bottom, or null when it is not showing. */
   titleLines(): string[] | null;
-  /** Starts the game from the title screen, as a tap would. */
-  start(): void;
+  /** Starts a game from the title screen, as a tap would: normal, or the daily challenge. */
+  start(mode?: 'normal' | 'daily'): void;
   /** Tells the game the page was hidden, as switching tabs or apps does. */
   hide(): void;
   snapshot(): GameSnapshot | null;
@@ -68,7 +68,7 @@ export function installTestHook(game: Phaser.Game): void {
   window.__game = {
     debugLines: () => (game.scene.getScene('Debug') as DebugScene | null)?.lines() ?? null,
     titleLines: () => title()?.lines() ?? null,
-    start: () => title()?.startGame(),
+    start: (mode) => title()?.startGame(mode),
     hide: () => game.events.emit(Phaser.Core.Events.HIDDEN),
     launchWarhead: (origin, target, speed, split) =>
       scene().testLaunchWarhead(origin, target, speed, split),
