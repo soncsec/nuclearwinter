@@ -9,9 +9,9 @@
     "node": ">=24.21.0 <25"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "build:e2e": "tsc --noEmit && vite build --mode e2e --outDir dist-e2e",
+    "dev": "VITE_BUILD=$(git rev-parse --short=8 HEAD 2>/dev/null || echo dev) vite",
+    "build": "tsc --noEmit && VITE_BUILD=$(git rev-parse --short=8 HEAD 2>/dev/null || echo dev) vite build",
+    "build:e2e": "tsc --noEmit && VITE_BUILD=$(git rev-parse --short=8 HEAD 2>/dev/null || echo dev) vite build --mode e2e --outDir dist-e2e",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",

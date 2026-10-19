@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { IMAGES, SHEETS } from '../assets/manifest';
+import { FONT_FAMILY, IMAGES, SHEETS } from '../assets/manifest';
 import { COLORS, CONFIRM_KEYS, DAILY_KEY, GAME_WIDTH, HUD, SCREENS, TITLE } from '../config/tuning';
 import { loadDailyBest, utcDateKey } from '../logic/daily';
 import { loadHighScore } from '../logic/highScore';
@@ -70,6 +70,17 @@ export class TitleScene extends Phaser.Scene {
       }),
     );
 
+    // The build number, so a play-test report can say exactly which build it was (M3.7).
+    this.texts.push(
+      this.add
+        .text(GAME_WIDTH - HUD.margin, TITLE.buildY, `BUILD ${buildId()}`, {
+          fontFamily: FONT_FAMILY,
+          fontSize: `${HUD.fontSizePx}px`,
+          color: COLORS.buildText,
+        })
+        .setOrigin(1, 0),
+    );
+
     // One input path for mouse and touch (ADR-NW06): a tap on the daily band starts the daily
     // challenge, any other tap a normal game. Desktop players can also press a key.
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
@@ -100,4 +111,10 @@ export class TitleScene extends Phaser.Scene {
     this.started = true;
     this.scene.start('Game', { mode });
   }
+}
+
+/** The build number, or "dev" when the build scripts didn't set one (or it looks wrong). */
+function buildId(): string {
+  const id = import.meta.env.VITE_BUILD ?? '';
+  return /^[0-9a-f]{8}$/.test(id) ? id : 'dev';
 }
