@@ -22,6 +22,7 @@ import { EffectPool, type EffectKind } from '../entities/EffectPool';
 import { blastRadius } from '../logic/blast';
 import type { Point } from '../logic/geometry';
 import { createRng, type Rng } from '../logic/rng';
+import { dailySeed, loadDailyBest, saveDailyBest, utcDateKey } from '../logic/daily';
 import { loadHighScore, saveHighScore } from '../logic/highScore';
 import { countUp, formatScore, waveMultiplier } from '../logic/scoring';
 import {
@@ -53,9 +54,13 @@ export interface DebugStats {
   effectPool: number;
 }
 
+/** A normal game, or the daily challenge (same seed for everyone on a UTC day, own best). */
+export type GameMode = 'normal' | 'daily';
+
 /** Read-only view of the game state, used by the e2e test hook. */
 export interface GameSnapshot {
   seed: number;
+  mode: GameMode;
   phase: Phase;
   /** Whether play is paused (the simulation stands still until a tap resumes it). */
   paused: boolean;
@@ -110,6 +115,9 @@ export class GameScene extends Phaser.Scene {
   private world!: World;
   private rng!: Rng;
   private seed = DEFAULT_SEED;
+  private mode: GameMode = 'normal';
+  /** The daily challenge's UTC date, fixed when the game starts so midnight can't split it. */
+  private dateKey = '';
   private defenses!: Phaser.GameObjects.Graphics;
   private fx!: Phaser.GameObjects.Graphics;
   /** Real time not yet simulated; the world advances in fixed steps (ADR-NW03). */
@@ -155,8 +163,13 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  init(data: { mode?: GameMode }): void {
+    this.mode = data.mode === 'daily' ? 'daily' : 'normal';
+    this.dateKey = utcDateKey(new Date());
+  }
+
   create(): void {
-    this.seed = seedFromUrl() ?? randomSeed();
+    this.seed = this.mode === 'daily' ? dailySeed(this.dateKey) : (seedFromUrl() ?? randomSeed());
     this.rng = createRng(this.seed);
     this.world = createWorld();
     this.pendingMs = 0;
@@ -188,7 +201,7 @@ export class GameScene extends Phaser.Scene {
       fontSize: `${HUD.fontSizePx}px`,
       color: COLORS.hud,
     });
-    this.highScore = loadHighScore(browserStore());
+    this.highScore = this.loadBest();
     this.highText = this.add
       .text(GAME_WIDTH / 2, HUD.margin, '', {
         fontFamily: FONT_FAMILY,
@@ -383,6 +396,7 @@ export class GameScene extends Phaser.Scene {
     const w = this.world;
     return {
       seed: this.seed,
+      mode: this.mode,
       phase: w.phase,
       paused: this.paused,
       wave: w.wave.number,
@@ -444,7 +458,7 @@ export class GameScene extends Phaser.Scene {
           break;
         case 'waveCleared': {
           // Saved at every wave, so closing the tab mid-game keeps the record.
-          saveHighScore(browserStore(), this.world.score);
+          this.saveBest(this.world.score);
           const b = e.bonus;
           this.showMessage(
             `WAVE ${e.number} CLEARED`,
@@ -471,12 +485,12 @@ export class GameScene extends Phaser.Scene {
           defensesChanged = true;
           break;
         case 'gameOver': {
-          saveHighScore(browserStore(), this.world.score);
+          this.saveBest(this.world.score);
           const newBest = this.world.score > this.highScore;
           this.showMessage(
             'GAME OVER',
             `SCORE ${formatScore(this.world.score, HUD.scoreDigits)}  WAVE ${this.world.wave.number}`,
-            newBest ? 'NEW HIGH SCORE' : '',
+            newBest ? (this.mode === 'daily' ? 'NEW DAILY BEST' : 'NEW HIGH SCORE') : '',
             'TO CONTINUE',
           );
           this.updateScore();
@@ -627,7 +641,22 @@ export class GameScene extends Phaser.Scene {
   /** Shows `score`, and the high score, which rises live once the score passes it. */
   private showScore(score: number): void {
     this.scoreText.setText(formatScore(score, HUD.scoreDigits));
-    this.highText.setText(`HI ${formatScore(Math.max(this.highScore, score), HUD.scoreDigits)}`);
+    const label = this.mode === 'daily' ? 'DAY' : 'HI';
+    this.highText.setText(
+      `${label} ${formatScore(Math.max(this.highScore, score), HUD.scoreDigits)}`,
+    );
+  }
+
+  /** The best to beat: today's daily best in the daily challenge, else the high score. */
+  private loadBest(): number {
+    return this.mode === 'daily'
+      ? loadDailyBest(browserStore(), this.dateKey)
+      : loadHighScore(browserStore());
+  }
+
+  private saveBest(score: number): void {
+    if (this.mode === 'daily') saveDailyBest(browserStore(), this.dateKey, score);
+    else saveHighScore(browserStore(), score);
   }
 
   /** Trails, missiles, aim markers and blasts, redrawn every frame. */

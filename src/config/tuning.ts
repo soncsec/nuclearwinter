@@ -274,6 +274,7 @@ export const COLORS = {
   baseDestroyed: 0x3a3030,
   hud: '#f2e9dc',
   title: '#7ff6ff',
+  dailyButton: 0x7ff6ff,
   pauseIcon: 0xf2e9dc,
   ammoPip: 0x7ff6ff,
   ammoOut: '#ff5a3c',
@@ -365,6 +366,8 @@ export const HUD = {
 export const HIGH_SCORE = {
   /** localStorage key. */
   storageKey: 'nuclearwinter.highScore',
+  /** The daily challenge's best, saved as "YYYY-MM-DD:score" (approved 2026-10-18). */
+  dailyStorageKey: 'nuclearwinter.dailyBest',
   /** Stored values above this are treated as tampered and ignored. */
   max: 999_999_999,
 } as const;
@@ -411,7 +414,15 @@ export const TITLE = {
   helpY: 104,
   help2Y: 116,
   promptY: 148,
+  /** The daily challenge button: its row, and how far above and below it a tap still counts. */
+  dailyY: 170,
+  dailyTapHalfHeight: 10,
+  dailyPanelWidth: 260,
+  dailyPanelHeight: 16,
 } as const;
+
+/** Desktop key that starts the daily challenge from the title screen. */
+export const DAILY_KEY = 'd';
 
 /** The pause button: a tap target in the HUD's top-right corner, with a two-bar icon. */
 export const PAUSE = {

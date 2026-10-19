@@ -1,8 +1,10 @@
 import Phaser from 'phaser';
 import { IMAGES, SHEETS } from '../assets/manifest';
-import { COLORS, CONFIRM_KEYS, HUD, SCREENS, TITLE } from '../config/tuning';
+import { COLORS, CONFIRM_KEYS, DAILY_KEY, GAME_WIDTH, HUD, SCREENS, TITLE } from '../config/tuning';
+import { loadDailyBest, utcDateKey } from '../logic/daily';
 import { loadHighScore } from '../logic/highScore';
 import { formatScore } from '../logic/scoring';
+import type { GameMode } from './GameScene';
 import { browserStore, centredText, drawBackdrop } from './ui';
 
 /** The title screen: the name, the high score, how to play, and a blinking prompt to start. */
@@ -47,10 +49,38 @@ export class TitleScene extends Phaser.Scene {
       this.prompt,
     ];
 
-    // One input path for mouse and touch (ADR-NW06); desktop players can also press a key.
-    this.input.on('pointerdown', () => this.startGame());
+    // The daily challenge: a button-like band under the prompt, with today's best on it.
+    const today = formatScore(
+      loadDailyBest(browserStore(), utcDateKey(new Date())),
+      HUD.scoreDigits,
+    );
+    this.add
+      .rectangle(
+        GAME_WIDTH / 2,
+        TITLE.dailyY + HUD.fontSizePx / 2,
+        TITLE.dailyPanelWidth,
+        TITLE.dailyPanelHeight,
+        COLORS.messagePanel,
+      )
+      .setAlpha(SCREENS.panelAlpha)
+      .setStrokeStyle(1, COLORS.dailyButton);
+    this.texts.push(
+      centredText(this, TITLE.dailyY, `${touch ? '' : 'D  '}DAILY CHALLENGE  BEST ${today}`, {
+        color: COLORS.title,
+      }),
+    );
+
+    // One input path for mouse and touch (ADR-NW06): a tap on the daily band starts the daily
+    // challenge, any other tap a normal game. Desktop players can also press a key.
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      const onDaily =
+        Math.abs(p.worldY - (TITLE.dailyY + HUD.fontSizePx / 2)) <= TITLE.dailyTapHalfHeight;
+      this.startGame(onDaily ? 'daily' : 'normal');
+    });
     this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
-      if (CONFIRM_KEYS.includes(e.key.toLowerCase())) this.startGame();
+      const key = e.key.toLowerCase();
+      if (key === DAILY_KEY) this.startGame('daily');
+      else if (CONFIRM_KEYS.includes(key)) this.startGame('normal');
     });
   }
 
@@ -65,9 +95,9 @@ export class TitleScene extends Phaser.Scene {
   }
 
   /** Starts a game. Taps, keys and the test hook call it; a second call does nothing. */
-  startGame(): void {
+  startGame(mode: GameMode = 'normal'): void {
     if (this.started) return;
     this.started = true;
-    this.scene.start('Game');
+    this.scene.start('Game', { mode });
   }
 }
