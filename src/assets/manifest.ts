@@ -1,6 +1,6 @@
 /** Every image the game loads, with its frame size for sprite sheets. Listed in CREDITS.md. */
 export const IMAGES = {
-  skylineFar: 'assets/backgrounds/skyline-far.png',
+  skylineNight: 'assets/backgrounds/skyline-far-night.png',
 } as const;
 
 export const SHEETS = {

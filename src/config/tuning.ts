@@ -6,14 +6,39 @@ export const GAME_HEIGHT = 216;
 /** Seed for the random number generator; override with ?seed= in the URL. */
 export const DEFAULT_SEED = 1;
 
-/** Background: night sky and the distant skyline (assets/backgrounds/skyline-far.png). */
+/** Background: night sky, stars and the distant skyline (assets/backgrounds/skyline-far-night.png). */
 export const SKY = {
-  /** The skyline image's own sky colour, so the two blend with no seam. */
-  color: '#052c46',
+  /** The sky fades from `top` at the top of the screen to `horizon` at the ground. */
+  top: 0x02060f,
+  horizon: 0x082a3e,
   /** Game-pixel row where the top of the skyline image sits. */
   skylineTop: 72,
   /** Rows of the 192-row image shown: everything above the street. */
   skylineHeight: GAME_HEIGHT - 72,
+  /** Multiplied into the skyline so it sits behind the action (approved look, M4.0). */
+  skylineTint: 0x56606e,
+} as const;
+
+/** Fixed star field: the same stars in every game. */
+export const STARS = {
+  seed: 7,
+  count: 90,
+  /** Stars sit above this row, clear of the skyline's lower half. */
+  maxY: 120,
+  color: 0xdcebff,
+  /** Alpha of the dimmest star; the brightest is 1. */
+  minAlpha: 0.25,
+  /** Stars brighter than this get a faint cross-shaped glint. */
+  glintAbove: 0.93,
+  glintAlpha: 0.35,
+} as const;
+
+/** City windows: a grid inside each building, some lit; the same in every game. */
+export const CITY_WINDOWS = {
+  seed: 3,
+  pitchX: 2,
+  pitchY: 3,
+  litChance: 0.65,
 } as const;
 
 /** The simulation advances in fixed steps of this many milliseconds (ADR-NW03). */
@@ -267,9 +292,13 @@ export const SCORE = {
 export const COLORS = {
   ground: 0x1a1410,
   groundEdge: 0x4a3a2a,
-  city: 0x6fd3ff,
+  /** A bit darker than the first cyan, as the owner asked for the approved look (M4.0). */
+  city: 0x4aa3cc,
+  /** The shaded right-hand column of each building. */
+  cityShade: 0x2c6f93,
   cityWindow: 0xfff3b0,
   rubble: 0x3a3030,
+  rubbleDark: 0x2a2222,
   base: 0x8a7a5a,
   baseDestroyed: 0x3a3030,
   hud: '#f2e9dc',
@@ -313,6 +342,11 @@ export const SHAPES = {
     [6, 4, 8],
   ],
   rubbleHeight: 2,
+  /** Darker chunks on a destroyed city's rubble: [x offset, y offset from the ground, width, height]. */
+  rubbleChunks: [
+    [-6, -4, 3, 2],
+    [2, -3, 4, 1],
+  ],
   baseHalfWidth: 12,
   baseHeight: 8,
   /** Bomber: [x offset, y offset, width, height] rectangles, drawn facing right (mirrored left). */

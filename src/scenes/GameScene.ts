@@ -15,13 +15,15 @@ import {
   PAUSE_KEYS,
   SCREENS,
   SHAPES,
+  CITY_WINDOWS,
   STEP_MS,
   TRAILS,
 } from '../config/tuning';
 import { EffectPool, type EffectKind } from '../entities/EffectPool';
 import { blastRadius } from '../logic/blast';
 import type { Point } from '../logic/geometry';
-import { createStreams, type RandomStreams } from '../logic/rng';
+import { createStreams, deriveSeed, type RandomStreams } from '../logic/rng';
+import { litWindows, type CityWindow } from '../logic/scenery';
 import { dailySeed, loadDailyBest, saveDailyBest, utcDateKey } from '../logic/daily';
 import { loadHighScore, saveHighScore } from '../logic/highScore';
 import { countUp, formatScore, waveMultiplier } from '../logic/scoring';
@@ -120,6 +122,8 @@ export class GameScene extends Phaser.Scene {
   /** The daily challenge's UTC date, fixed when the game starts so midnight can't split it. */
   private dateKey = '';
   private defenses!: Phaser.GameObjects.Graphics;
+  /** Lit windows of each city, fixed for every game. */
+  private cityWindows: CityWindow[][] = [];
   private fx!: Phaser.GameObjects.Graphics;
   /** Real time not yet simulated; the world advances in fixed steps (ADR-NW03). */
   private pendingMs = 0;
@@ -180,6 +184,15 @@ export class GameScene extends Phaser.Scene {
     drawBackdrop(this);
 
     this.defenses = this.add.graphics();
+    this.cityWindows = this.world.cities.map((_, i) =>
+      litWindows(
+        deriveSeed(CITY_WINDOWS.seed, i),
+        SHAPES.cityBlocks,
+        CITY_WINDOWS.pitchX,
+        CITY_WINDOWS.pitchY,
+        CITY_WINDOWS.litChance,
+      ),
+    );
     this.outLabels = this.world.bases.map((b) =>
       this.add
         .text(b.x, AMMO_PIPS.outLabelTop, 'OUT', {
@@ -721,17 +734,23 @@ export class GameScene extends Phaser.Scene {
   /** Cities and bases: standing, or rubble once destroyed. */
   private drawDefenses(): void {
     const g = this.defenses.clear();
-    for (const city of this.world.cities) {
+    this.world.cities.forEach((city, i) => {
       if (city.alive) {
         for (const [dx, w, h] of SHAPES.cityBlocks) {
           g.fillStyle(COLORS.city).fillRect(city.x + dx, GROUND_Y - h, w, h);
-          g.fillStyle(COLORS.cityWindow).fillRect(city.x + dx + 1, GROUND_Y - h + 2, 1, 1);
+          g.fillStyle(COLORS.cityShade).fillRect(city.x + dx + w - 1, GROUND_Y - h, 1, h);
         }
+        g.fillStyle(COLORS.cityWindow);
+        for (const win of this.cityWindows[i] ?? [])
+          g.fillRect(city.x + win.dx, GROUND_Y + win.dy, 1, 1);
       } else {
         g.fillStyle(COLORS.rubble);
         g.fillRect(city.x - 9, GROUND_Y - SHAPES.rubbleHeight, 19, SHAPES.rubbleHeight);
+        g.fillStyle(COLORS.rubbleDark);
+        for (const [dx, dy, w, h] of SHAPES.rubbleChunks)
+          g.fillRect(city.x + dx, GROUND_Y + dy, w, h);
       }
-    }
+    });
     for (const base of this.world.bases) {
       g.fillStyle(base.alive ? COLORS.base : COLORS.baseDestroyed);
       const h = base.alive ? SHAPES.baseHeight : SHAPES.rubbleHeight;
