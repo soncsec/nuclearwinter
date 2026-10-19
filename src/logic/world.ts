@@ -7,6 +7,7 @@ import {
   MIRV,
   RAIDERS,
   SCORE,
+  SMART_BOMB,
   WARHEAD,
   type WaveSpec,
 } from '../config/tuning';
@@ -44,6 +45,8 @@ export interface Warhead {
   readonly split?: { readonly atY: number; readonly count: number };
   /** For a warhead born from a split: where the parent's trail began, so it stays drawn. */
   readonly stemFrom?: Point;
+  /** A smart bomb: steers around blasts (M3.3). */
+  readonly smart?: boolean;
 }
 
 export type RaiderKind = 'bomber' | 'satellite';
@@ -285,11 +288,48 @@ export function launchWarhead(
   origin: Point,
   target: Point,
   speed: number,
-  extra: Pick<Warhead, 'split' | 'stemFrom'> = {},
+  extra: Pick<Warhead, 'split' | 'stemFrom' | 'smart'> = {},
 ): Warhead {
   const warhead: Warhead = { id: world.nextId++, origin, target, pos: origin, speed, ...extra };
   world.warheads.push(warhead);
   return warhead;
+}
+
+/** The chance that a warhead launched on this wave is a smart bomb. */
+export function smartBombChance(waveNumber: number, rule: typeof SMART_BOMB = SMART_BOMB): number {
+  if (waveNumber < rule.firstWave) return 0;
+  return Math.min(rule.chanceMax, rule.chance + (waveNumber - rule.firstWave) * rule.chanceStep);
+}
+
+/**
+ * One step of a smart bomb: towards its target at `speed`, pushed away at `dodgeSpeed` from
+ * every blast that is within `senseMargin` of reaching it. Stays on screen.
+ */
+export function smartStep(
+  pos: Point,
+  target: Point,
+  speed: number,
+  blasts: readonly { center: Point; radius: number }[],
+  dtMs: number,
+  rule: { senseMargin: number; dodgeSpeed: number } = SMART_BOMB,
+): { pos: Point; arrived: boolean } {
+  const dt = dtMs / 1000;
+  const toTarget = distance(pos, target);
+  if (toTarget <= speed * dt) return { pos: { x: target.x, y: target.y }, arrived: true };
+  let vx = ((target.x - pos.x) / toTarget) * speed;
+  let vy = ((target.y - pos.y) / toTarget) * speed;
+  for (const b of blasts) {
+    const d = distance(b.center, pos);
+    const gap = d - b.radius;
+    if (gap >= rule.senseMargin) continue;
+    // Straight below or above a blast's centre, slip sideways rather than stall.
+    const ax = d > 0.001 ? (pos.x - b.center.x) / d : 1;
+    const ay = d > 0.001 ? (pos.y - b.center.y) / d : 0;
+    vx += ax * rule.dodgeSpeed;
+    vy += ay * rule.dodgeSpeed;
+  }
+  const next = { x: clamp(pos.x + vx * dt, 0, GAME_WIDTH), y: pos.y + vy * dt };
+  return { pos: next, arrived: false };
 }
 
 /** The chance that a warhead launched on this wave is a MIRV. */
@@ -326,8 +366,10 @@ function launchDueWarheads(world: World, rng: Rng): void {
   const spec = wave.spec;
   while (wave.toLaunch > 0 && world.timeMs >= wave.nextLaunchMs) {
     const count = wave.toLaunch >= 2 && rng.next() < spec.pairChance ? 2 : 1;
-    // MIRVs draw on the RNG only from their first wave, so earlier waves replay unchanged.
+    // MIRVs and smart bombs draw on the RNG only from their first waves, so earlier waves
+    // replay unchanged.
     const chance = mirvChance(wave.number);
+    const smartChance = smartBombChance(wave.number);
     for (let i = 0; i < count; i++) {
       const origin = { x: rng.range(0, GAME_WIDTH), y: WARHEAD.spawnY };
       const target = pickTarget(world, rng);
@@ -339,7 +381,8 @@ function launchDueWarheads(world: World, rng: Rng): void {
               count: rng.int(MIRV.childrenMin, MIRV.childrenMax),
             }
           : undefined;
-      launchWarhead(world, origin, target, speed, split ? { split } : {});
+      const smart = !split && smartChance > 0 && rng.next() < smartChance;
+      launchWarhead(world, origin, target, speed, split ? { split } : smart ? { smart } : {});
     }
     wave.toLaunch -= count;
     wave.nextLaunchMs += rng.range(spec.launchGapMinMs, spec.launchGapMaxMs);
@@ -372,8 +415,11 @@ function moveInterceptors(world: World, dtMs: number): void {
 }
 
 function moveWarheads(world: World, dtMs: number): void {
+  const blasts = world.blasts.map((b) => ({ center: b.center, radius: blastRadius(b.ageMs) }));
   world.warheads = world.warheads.filter((w) => {
-    const { pos, arrived } = moveToward(w.pos, w.target, (w.speed * dtMs) / 1000);
+    const { pos, arrived } = w.smart
+      ? smartStep(w.pos, w.target, w.speed, blasts, dtMs)
+      : moveToward(w.pos, w.target, (w.speed * dtMs) / 1000);
     w.pos = pos;
     if (arrived) hitGround(world, pos);
     return !arrived;
@@ -493,7 +539,8 @@ function destroyWarheadsInBlasts(world: World): void {
   world.warheads = world.warheads.filter((w) => {
     const caught = world.blasts.some((b) => distance(b.center, w.pos) <= blastRadius(b.ageMs));
     if (caught) {
-      const points = SCORE.warhead * waveMultiplier(world.wave.number);
+      const base = w.smart ? SMART_BOMB.points : SCORE.warhead;
+      const points = base * waveMultiplier(world.wave.number);
       world.score += points;
       world.events.push({ type: 'warheadDestroyed', at: w.pos, points });
       addBlast(world, w.pos, 'chain');

@@ -98,6 +98,23 @@ export const RAIDERS = {
 } as const;
 
 /**
+ * Smart bombs (M3.3): from `firstWave`, a launched warhead may be a smart bomb. It has no
+ * trail, and when a blast comes within `senseMargin` pixels of reaching it, it steers away
+ * from the blast at `dodgeSpeed` px/s, then heads back to its target. `dodgeSpeed` must stay
+ * below a blast's growth speed (BLAST.maxRadius / BLAST.growMs, 40 px/s), or a smart bomb
+ * could never be caught: at 24 px/s a shot within about 5 px still catches one.
+ */
+export const SMART_BOMB = {
+  firstWave: 6,
+  chance: 0.08,
+  chanceStep: 0.02,
+  chanceMax: 0.25,
+  senseMargin: 10,
+  dodgeSpeed: 24,
+  points: 125,
+} as const;
+
+/**
  * Splitting warheads (MIRVs, M3.1): from `firstWave`, each launched warhead may be one. It
  * looks like any other until it reaches its split row, then becomes 2 or 3 warheads aimed at
  * different targets. Shooting it down before the split stops all of them.
@@ -240,6 +257,7 @@ export const COLORS = {
   satellite: 0xc8b0ff,
   satellitePanel: 0x5a7cff,
   warheadHead: 0xffffff,
+  smartBomb: 0xffe066,
   interceptorTrail: 0x7ff6ff,
   aimMarker: 0x7ff6ff,
   blastOuter: 0xffb347,

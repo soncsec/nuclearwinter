@@ -33,6 +33,8 @@ export interface TestHook {
   ): void;
   /** Sends a bomber or satellite across the sky at row `y`; `dir` 1 flies right; `x` to start mid-screen. */
   launchRaider(kind: 'bomber' | 'satellite', y: number, dir: 1 | -1, x?: number): void;
+  /** Launches a smart bomb, which steers around blasts. */
+  launchSmartBomb(origin: Point, target: Point, speed: number): void;
   /** Fires at a point as a tap would, so a test can time a shot exactly. */
   fireAt(target: Point): void;
   /** Stops the wave launching warheads but keeps it open, so a test controls every one. */
@@ -72,6 +74,7 @@ export function installTestHook(game: Phaser.Game): void {
       scene().testLaunchWarhead(origin, target, speed, split),
     launchRaider: (kind, y, dir, x) => scene().testLaunchRaider(kind, y, dir, x),
     fireAt: (target) => scene().testFireAt(target),
+    launchSmartBomb: (origin, target, speed) => scene().testLaunchSmartBomb(origin, target, speed),
     holdWave: () => scene().testHoldWave(),
     finishWave: () => scene().testFinishWave(),
     canRestart: () => scene().testCanRestart(),

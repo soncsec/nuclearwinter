@@ -78,6 +78,8 @@ export interface GameSnapshot {
   /** Whether each base shows its "OUT" label. */
   outLabels: boolean[];
   warheads: Point[];
+  /** Smart bombs among the warheads. */
+  smartBombs: number;
   /** Bombers and satellites in the sky. */
   raiders: { kind: RaiderKind; x: number; y: number }[];
   /** Bombers and satellites shot down so far this game. */
@@ -335,6 +337,11 @@ export class GameScene extends Phaser.Scene {
     if (x !== undefined) r.pos = { x, y };
   }
 
+  /** For the test hook: launches a smart bomb. */
+  testLaunchSmartBomb(origin: Point, target: Point, speed: number): void {
+    launchWarhead(this.world, origin, target, speed, { smart: true });
+  }
+
   /** For the test hook: fires at a point, as a tap there would, in the same frame as the call. */
   testFireAt(target: Point): void {
     fire(this.world, target);
@@ -390,6 +397,7 @@ export class GameScene extends Phaser.Scene {
       ammo: w.bases.map((b) => b.ammo),
       outLabels: this.outLabels.map((t) => t.visible),
       warheads: w.warheads.map((h) => ({ ...h.pos })),
+      smartBombs: w.warheads.filter((h) => h.smart).length,
       raiders: w.raiders.map((r) => ({ kind: r.kind, x: r.pos.x, y: r.pos.y })),
       raidersDestroyed: this.raidersDestroyed,
       interceptors: w.interceptors.length,
@@ -626,6 +634,15 @@ export class GameScene extends Phaser.Scene {
   private drawMoving(): void {
     const g = this.fx.clear();
     for (const h of this.world.warheads) {
+      if (h.smart) {
+        // Smart bombs leave no trail: a small diamond, as in the arcade game.
+        const x = Math.round(h.pos.x);
+        const y = Math.round(h.pos.y);
+        g.fillStyle(COLORS.smartBomb)
+          .fillRect(x - 1, y, 3, 1)
+          .fillRect(x, y - 1, 1, 3);
+        continue;
+      }
       g.lineStyle(1, COLORS.warheadTrail, TRAILS.alpha);
       // A warhead born from a split keeps its parent's trail down to the split point.
       if (h.stemFrom) g.lineBetween(h.stemFrom.x, h.stemFrom.y, h.origin.x, h.origin.y);
