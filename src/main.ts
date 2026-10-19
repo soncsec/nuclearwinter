@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import './style.css';
-import { GAME_HEIGHT, GAME_WIDTH } from './config/tuning';
+import { DEBUG_OVERLAY, GAME_HEIGHT, GAME_WIDTH } from './config/tuning';
 import { deviceZoom } from './logic/scaling';
 import { FONT_FAMILY } from './assets/manifest';
 import { GameScene } from './scenes/GameScene';
@@ -40,8 +40,13 @@ window.addEventListener('resize', () => {
   if (game.scale.zoom !== zoom) game.scale.setZoom(zoom);
 });
 
-// Dev and e2e builds get the debug overlay (?debug, or the backquote key); production does not.
-if (import.meta.env.MODE !== 'production') {
+// The debug overlay (frame rate and counts) loads in dev and e2e builds, and in production only
+// when the address has ?debug (owner decision 2026-10-19, to measure phones). It is a separate
+// chunk, so players who don't ask for it never download it.
+const wantDebug =
+  import.meta.env.MODE !== 'production' ||
+  new URLSearchParams(window.location.search).has(DEBUG_OVERLAY.queryParam);
+if (wantDebug) {
   void import('./debug/DebugOverlay').then(({ installDebugOverlay }) => installDebugOverlay(game));
 }
 
