@@ -21,8 +21,16 @@ export interface TestHook {
   /** Tells the game the page was hidden, as switching tabs or apps does. */
   hide(): void;
   snapshot(): GameSnapshot | null;
-  /** Launches an enemy warhead from `origin` towards `target` at `speed` px/s. */
-  launchWarhead(origin: Point, target: Point, speed: number): void;
+  /**
+   * Launches an enemy warhead from `origin` towards `target` at `speed` px/s. With `split`, it
+   * is a MIRV that splits into `count` warheads at row `atY`.
+   */
+  launchWarhead(
+    origin: Point,
+    target: Point,
+    speed: number,
+    split?: { atY: number; count: number },
+  ): void;
   /** Stops the wave launching warheads but keeps it open, so a test controls every one. */
   holdWave(): void;
   /** Launches nothing more, so the wave is cleared once the sky is empty. */
@@ -56,7 +64,8 @@ export function installTestHook(game: Phaser.Game): void {
     titleLines: () => title()?.lines() ?? null,
     start: () => title()?.startGame(),
     hide: () => game.events.emit(Phaser.Core.Events.HIDDEN),
-    launchWarhead: (origin, target, speed) => scene().testLaunchWarhead(origin, target, speed),
+    launchWarhead: (origin, target, speed, split) =>
+      scene().testLaunchWarhead(origin, target, speed, split),
     holdWave: () => scene().testHoldWave(),
     finishWave: () => scene().testFinishWave(),
     canRestart: () => scene().testCanRestart(),

@@ -5,6 +5,7 @@ import {
   CITIES,
   GROUND_Y,
   INTERCEPTOR,
+  MIRV,
   SCORE,
   STEP_MS,
   WAVES,
@@ -17,6 +18,7 @@ import {
   drainEvents,
   fire,
   launchWarhead,
+  mirvChance,
   nearestBase,
   step,
   startNextWave,
@@ -511,5 +513,100 @@ describe('bonus cities', () => {
     expect(events).toContainEqual({ type: 'cityRebuilt', index: 2 });
     expect(w.spareCities).toBe(0);
     expect(w.cities.every((c) => c.alive)).toBe(true);
+  });
+});
+
+describe('MIRVs (splitting warheads)', () => {
+  it('appear from MIRV.firstWave, more often each wave, up to the cap', () => {
+    expect(mirvChance(1)).toBe(0);
+    expect(mirvChance(MIRV.firstWave - 1)).toBe(0);
+    expect(mirvChance(MIRV.firstWave)).toBe(MIRV.chance);
+    expect(mirvChance(MIRV.firstWave + 2)).toBeCloseTo(MIRV.chance + 2 * MIRV.chanceStep);
+    expect(mirvChance(1000)).toBe(MIRV.chanceMax);
+  });
+
+  it('split into `count` warheads at the split row, keeping the trail and the speed', () => {
+    const w = quietWorld();
+    launchWarhead(w, { x: 100, y: 0 }, { x: 100, y: GROUND_Y }, 600, {
+      split: { atY: 60, count: 3 },
+    });
+    run(w, createRng(3), 200);
+    const events = drainEvents(w);
+    const split = events.find((e) => e.type === 'warheadSplit');
+    expect(split).toMatchObject({ type: 'warheadSplit', count: 3 });
+    expect(w.warheads).toHaveLength(3);
+    for (const child of w.warheads) {
+      expect(child.split).toBeUndefined();
+      expect(child.stemFrom).toEqual({ x: 100, y: 0 });
+      expect(child.origin.y).toBeGreaterThanOrEqual(60);
+      expect(child.speed).toBe(600);
+      expect(child.target.y).toBe(GROUND_Y);
+    }
+  });
+
+  it('aim their warheads at different targets while enough are standing', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const w = quietWorld();
+      launchWarhead(w, { x: 100, y: 0 }, { x: 100, y: GROUND_Y }, 600, {
+        split: { atY: 30, count: 3 },
+      });
+      run(w, createRng(seed), 100);
+      const xs = w.warheads.map((h) => h.target.x);
+      expect(new Set(xs).size).toBe(3);
+    }
+  });
+
+  it('share a target only when there are not enough left', () => {
+    const w = quietWorld();
+    w.cities.forEach((c, i) => (c.alive = i === 0));
+    w.bases.forEach((b) => (b.alive = false));
+    launchWarhead(w, { x: 100, y: 0 }, { x: 100, y: GROUND_Y }, 600, {
+      split: { atY: 30, count: 2 },
+    });
+    run(w, createRng(2), 100);
+    expect(w.warheads.map((h) => h.target.x)).toEqual([CITIES.xs[0], CITIES.xs[0]]);
+  });
+
+  it('shot down before the split, stop every child and score once', () => {
+    const w = quietWorld();
+    launchWarhead(w, { x: 192, y: 20 }, { x: 192, y: GROUND_Y }, 0.001, {
+      split: { atY: 120, count: 3 },
+    });
+    w.blasts.push({ id: 99, center: { x: 192, y: 22 }, ageMs: BLAST.growMs, kind: 'player' });
+    run(w, createRng(1), STEP_MS * 2);
+    expect(w.warheads).toEqual([]);
+    expect(w.score).toBe(SCORE.warhead);
+    expect(drainEvents(w).some((e) => e.type === 'warheadSplit')).toBe(false);
+  });
+
+  it('keep the wave open until every child has landed or been shot down', () => {
+    const w = quietWorld();
+    launchWarhead(w, { x: 100, y: 0 }, { x: 100, y: GROUND_Y }, 600, {
+      split: { atY: 30, count: 2 },
+    });
+    run(w, createRng(5), 100);
+    expect(w.phase).toBe('playing');
+    expect(w.warheads).toHaveLength(2);
+    run(w, createRng(5), 2000);
+    expect(w.warheads).toEqual([]);
+  });
+
+  it('never launch on waves before MIRV.firstWave, and do launch later (seeded)', () => {
+    const countMirvs = (waveNumber: number): number => {
+      const w = createWorld();
+      w.wave = { ...w.wave, number: waveNumber, toLaunch: 200, nextLaunchMs: 0 };
+      const rng = createRng(11);
+      let mirvs = 0;
+      for (let i = 0; i < 4000 && w.wave.toLaunch > 0; i++) {
+        const before = w.warheads.length;
+        step(w, rng, STEP_MS);
+        mirvs += w.warheads.slice(before).filter((h) => h.split).length;
+        w.warheads = [];
+      }
+      return mirvs;
+    };
+    expect(countMirvs(1)).toBe(0);
+    expect(countMirvs(MIRV.firstWave - 1)).toBe(0);
+    expect(countMirvs(MIRV.firstWave + 10)).toBeGreaterThan(0);
   });
 });

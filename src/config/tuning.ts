@@ -63,6 +63,24 @@ export const WARHEAD = {
   spawnY: -4,
 } as const;
 
+/**
+ * Splitting warheads (MIRVs, M3.1): from `firstWave`, each launched warhead may be one. It
+ * looks like any other until it reaches its split row, then becomes 2 or 3 warheads aimed at
+ * different targets. Shooting it down before the split stops all of them.
+ */
+export const MIRV = {
+  firstWave: 3,
+  /** Chance on `firstWave`, rising by `chanceStep` each wave up to `chanceMax`. */
+  chance: 0.1,
+  chanceStep: 0.03,
+  chanceMax: 0.35,
+  /** The split happens somewhere between these rows. */
+  splitYMin: 50,
+  splitYMax: 120,
+  childrenMin: 2,
+  childrenMax: 3,
+} as const;
+
 /** How one wave launches its warheads. */
 export interface WaveSpec {
   /** Warheads in the wave. */

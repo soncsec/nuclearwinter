@@ -8,8 +8,8 @@
 |---|---|
 | M0 Setup | Done |
 | M1 Walking skeleton (one wave, released to production) | Done: owner played on PC and phone 2026-10-18 (phone frame rate still to record) |
-| M2 Core game | In progress |
-| M3 Enemies | Not started |
+| M2 Core game | Done |
+| M3 Enemies | In progress |
 | M4 The Nuclear Winter look | Not started |
 | M5 Mobile and launch (MVP) | Not started |
 | M6 Audio | Not started (after the MVP) |
@@ -73,7 +73,7 @@
 
 **Demonstrable result:** all four enemy types appear as the waves get harder.
 
-- [ ] M3.1 Splitting warheads (MIRVs)
+- [x] M3.1 Splitting warheads (MIRVs)
 - [ ] M3.2 Bombers and satellites that cross the sky and launch warheads
 - [ ] M3.3 Smart bombs that steer around blasts
 - [ ] M3.4 Enemy mix added to the wave formula, with their point values
