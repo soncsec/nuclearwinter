@@ -91,7 +91,7 @@
 **Demonstrable result:** the finished visual style.
 
 - [x] M4.0 Look mock-up: one screenshot of the finished style (ash, darkening sky, glow, city-hit flash) approved by the owner before the effects are built (approved 2026-10-19; frames in `docs/look/`, cities to be a bit darker)
-- [ ] M4.1 Final art: skyline layers, cities, bases, explosions, night sky
+- [x] M4.1 Final art: skyline layers, cities, bases, explosions, night sky
 - [ ] M4.2 Glowing missile trails and blast glow (additive), particles
 - [ ] M4.3 Screen shake and the city-hit flash, kept under the safe-flash limit
 - [ ] M4.4 Falling ash and a darkening sky that thicken as cities are lost

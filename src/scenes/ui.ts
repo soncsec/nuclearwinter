@@ -1,15 +1,28 @@
 import type Phaser from 'phaser';
 import { FONT_FAMILY } from '../assets/manifest';
-import { COLORS, GAME_HEIGHT, GAME_WIDTH, GROUND_Y, HUD, SKY } from '../config/tuning';
+import { COLORS, GAME_HEIGHT, GAME_WIDTH, GROUND_Y, HUD, SKY, STARS } from '../config/tuning';
+import { starField } from '../logic/scenery';
 import type { KeyValueStore } from '../logic/highScore';
 
-/** The night sky, the distant skyline and the ground, shared by the title and game screens. */
+/** The night sky, the stars, the distant skyline and the ground, shared by the title and game screens. */
 export function drawBackdrop(scene: Phaser.Scene): void {
-  scene.cameras.main.setBackgroundColor(SKY.color);
-  // The skyline is tiled across the screen; its own sky matches the game's sky colour.
+  const sky = scene.add.graphics();
+  sky.fillGradientStyle(SKY.top, SKY.top, SKY.horizon, SKY.horizon, 1);
+  sky.fillRect(0, 0, GAME_WIDTH, GROUND_Y);
+  for (const star of starField(STARS.seed, STARS.count, GAME_WIDTH, STARS.maxY)) {
+    sky.fillStyle(STARS.color, STARS.minAlpha + star.brightness * (1 - STARS.minAlpha));
+    sky.fillRect(star.x, star.y, 1, 1);
+    if (star.brightness > STARS.glintAbove) {
+      sky.fillStyle(STARS.color, STARS.glintAlpha);
+      sky.fillRect(star.x - 1, star.y, 1, 1).fillRect(star.x + 1, star.y, 1, 1);
+      sky.fillRect(star.x, star.y - 1, 1, 1).fillRect(star.x, star.y + 1, 1, 1);
+    }
+  }
+  // The skyline is tiled across the screen; its sky is transparent, so the stars show above it.
   scene.add
-    .tileSprite(0, SKY.skylineTop, GAME_WIDTH, SKY.skylineHeight, 'skylineFar')
-    .setOrigin(0, 0);
+    .tileSprite(0, SKY.skylineTop, GAME_WIDTH, SKY.skylineHeight, 'skylineNight')
+    .setOrigin(0, 0)
+    .setTint(SKY.skylineTint);
   scene.add
     .rectangle(0, GROUND_Y, GAME_WIDTH, GAME_HEIGHT - GROUND_Y, COLORS.ground)
     .setOrigin(0, 0);

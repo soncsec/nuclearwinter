@@ -6,7 +6,8 @@ From the **Ansimuz Legacy Collection** (CC0 1.0, public domain): https://ansimuz
 
 | File in `public/` | Use | Source in the pack |
 |---|---|---|
-| `assets/backgrounds/skyline-far.png` | distant city skyline (256×192, tiled across the screen) | `Warped/Environments/Synth City/Version 1/PNG/layers/far-buildings.png` |
+| `assets/backgrounds/skyline-far.png` | source for the night skyline below (not loaded by the game) | `Warped/Environments/Synth City/Version 1/PNG/layers/far-buildings.png` |
+| `assets/backgrounds/skyline-far-night.png` | distant city skyline (256×192, tiled across the screen); the same image with its flat sky colour made transparent by `tools/art/key-skyline.mjs` | derived from `far-buildings.png` above |
 | `assets/fx/explosion-1-a.png` | warhead impact on the ground (8 frames of 32×32) | `Explosions and Magic/Explosions pack/explosion-1-a/spritesheet.png` |
 | `assets/fx/explosion-1-b.png` | a city or base being destroyed (8 frames of 64×64) | `Explosions and Magic/Explosions pack/explosion-1-b/spritesheet.png` |
 
