@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { BLAST, GAME_WIDTH, GROUND_Y, SMART_BOMB, STEP_MS } from '../../src/config/tuning';
+import { BLAST, GAME_WIDTH, GROUND_Y, SCORE, SMART_BOMB, STEP_MS } from '../../src/config/tuning';
+import { waveSpec } from '../../src/logic/waves';
+import { firstWaveWith } from './mix';
 import { createRng } from '../../src/logic/rng';
 import {
   createWorld,
   drainEvents,
   fire,
   launchWarhead,
-  smartBombChance,
   smartStep,
   step,
   type World,
@@ -18,15 +19,6 @@ function quietWorld(): World {
   w.wave.raidersToLaunch = 0;
   return w;
 }
-
-describe('smart bomb chance', () => {
-  it('starts at SMART_BOMB.firstWave, rises each wave, and stops at the cap', () => {
-    expect(smartBombChance(1)).toBe(0);
-    expect(smartBombChance(SMART_BOMB.firstWave - 1)).toBe(0);
-    expect(smartBombChance(SMART_BOMB.firstWave)).toBe(SMART_BOMB.chance);
-    expect(smartBombChance(1000)).toBe(SMART_BOMB.chanceMax);
-  });
-});
 
 describe('smartStep', () => {
   const target = { x: 100, y: GROUND_Y };
@@ -110,7 +102,7 @@ describe('smart bombs in the world', () => {
   it('are caught by a blast that starts on top of them, for 125 points', () => {
     const r = survives(true, 120);
     expect(r.alive).toBe(false);
-    expect(r.score).toBe(SMART_BOMB.points);
+    expect(r.score).toBe(SCORE.smartBomb);
   });
 
   it('are worth multiplied points on later waves', () => {
@@ -119,18 +111,19 @@ describe('smart bombs in the world', () => {
     launchWarhead(w, { x: 192, y: 100 }, { x: 192, y: GROUND_Y }, 0.001, { smart: true });
     w.blasts.push({ id: 99, center: { x: 192, y: 100 }, ageMs: BLAST.growMs, kind: 'player' });
     step(w, createRng(1), STEP_MS);
-    expect(w.score).toBe(SMART_BOMB.points * 2);
+    expect(w.score).toBe(SCORE.smartBomb * 2);
     expect(drainEvents(w)).toContainEqual(
-      expect.objectContaining({ type: 'warheadDestroyed', points: SMART_BOMB.points * 2 }),
+      expect.objectContaining({ type: 'warheadDestroyed', points: SCORE.smartBomb * 2 }),
     );
   });
 
-  it('launch only from SMART_BOMB.firstWave (seeded), and never as MIRVs', () => {
+  it('launch only from their first wave (seeded), and never as MIRVs', () => {
     const launched = (waveNumber: number): { smart: number; both: number } => {
       const w = createWorld();
       w.wave = {
         ...w.wave,
         number: waveNumber,
+        spec: waveSpec(waveNumber),
         toLaunch: 300,
         nextLaunchMs: 0,
         raidersToLaunch: 0,
@@ -149,8 +142,8 @@ describe('smart bombs in the world', () => {
       }
       return { smart, both };
     };
-    expect(launched(SMART_BOMB.firstWave - 1).smart).toBe(0);
-    const later = launched(SMART_BOMB.firstWave + 5);
+    expect(launched(firstWaveWith('smartBombChance') - 1).smart).toBe(0);
+    const later = launched(firstWaveWith('smartBombChance') + 5);
     expect(later.smart).toBeGreaterThan(0);
     expect(later.both).toBe(0);
   });
