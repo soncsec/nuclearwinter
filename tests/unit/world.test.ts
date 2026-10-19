@@ -5,12 +5,13 @@ import {
   CITIES,
   GROUND_Y,
   INTERCEPTOR,
-  MIRV,
   SCORE,
   STEP_MS,
   WAVES,
 } from '../../src/config/tuning';
 import { blastDurationMs } from '../../src/logic/blast';
+import { waveSpec } from '../../src/logic/waves';
+import { firstWaveWith } from './mix';
 import { createRng, type Rng } from '../../src/logic/rng';
 import {
   aimPoint,
@@ -18,7 +19,6 @@ import {
   drainEvents,
   fire,
   launchWarhead,
-  mirvChance,
   nearestBase,
   step,
   startNextWave,
@@ -519,14 +519,6 @@ describe('bonus cities', () => {
 });
 
 describe('MIRVs (splitting warheads)', () => {
-  it('appear from MIRV.firstWave, more often each wave, up to the cap', () => {
-    expect(mirvChance(1)).toBe(0);
-    expect(mirvChance(MIRV.firstWave - 1)).toBe(0);
-    expect(mirvChance(MIRV.firstWave)).toBe(MIRV.chance);
-    expect(mirvChance(MIRV.firstWave + 2)).toBeCloseTo(MIRV.chance + 2 * MIRV.chanceStep);
-    expect(mirvChance(1000)).toBe(MIRV.chanceMax);
-  });
-
   it('split into `count` warheads at the split row, keeping the trail and the speed', () => {
     const w = quietWorld();
     launchWarhead(w, { x: 100, y: 0 }, { x: 100, y: GROUND_Y }, 600, {
@@ -593,10 +585,17 @@ describe('MIRVs (splitting warheads)', () => {
     expect(w.warheads).toEqual([]);
   });
 
-  it('never launch on waves before MIRV.firstWave, and do launch later (seeded)', () => {
+  it('never launch on waves before their first, and do launch later (seeded)', () => {
     const countMirvs = (waveNumber: number): number => {
       const w = createWorld();
-      w.wave = { ...w.wave, number: waveNumber, toLaunch: 200, nextLaunchMs: 0 };
+      w.wave = {
+        ...w.wave,
+        number: waveNumber,
+        spec: waveSpec(waveNumber),
+        toLaunch: 200,
+        nextLaunchMs: 0,
+        raidersToLaunch: 0,
+      };
       const rng = createRng(11);
       let mirvs = 0;
       for (let i = 0; i < 4000 && w.wave.toLaunch > 0; i++) {
@@ -608,7 +607,7 @@ describe('MIRVs (splitting warheads)', () => {
       return mirvs;
     };
     expect(countMirvs(1)).toBe(0);
-    expect(countMirvs(MIRV.firstWave - 1)).toBe(0);
-    expect(countMirvs(MIRV.firstWave + 10)).toBeGreaterThan(0);
+    expect(countMirvs(firstWaveWith('mirvChance') - 1)).toBe(0);
+    expect(countMirvs(firstWaveWith('mirvChance') + 10)).toBeGreaterThan(0);
   });
 });

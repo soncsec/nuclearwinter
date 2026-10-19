@@ -65,14 +65,10 @@ export const WARHEAD = {
 
 /**
  * Bombers and satellites (M3.2): they cross the sky and drop warheads while over the play
- * area. A blast that touches one destroys it. From `firstWave`, each wave sends
- * `countBase` of them, one more every `countStepWaves` waves, up to `countMax`.
+ * area. A blast that touches one destroys it. How many come each wave, and how many are
+ * satellites, is part of the wave's enemy mix (`WAVES`).
  */
 export const RAIDERS = {
-  firstWave: 2,
-  countBase: 1,
-  countStepWaves: 2,
-  countMax: 4,
   /** The first raider of a wave, then the gaps between them, in milliseconds. */
   firstSpawnMs: 4000,
   gapMinMs: 5000,
@@ -83,48 +79,30 @@ export const RAIDERS = {
   dropMargin: 24,
   dropGapMinMs: 1500,
   dropGapMaxMs: 3000,
-  bomber: { yMin: 50, yMax: 80, speed: 28, drops: 3, hitRadius: 5, points: 100 },
-  /** From `firstWave`, each raider is a satellite with this chance. */
-  satellite: {
-    firstWave: 4,
-    chance: 0.4,
-    yMin: 24,
-    yMax: 44,
-    speed: 20,
-    drops: 2,
-    hitRadius: 4,
-    points: 100,
-  },
+  bomber: { yMin: 50, yMax: 80, speed: 28, drops: 3, hitRadius: 5 },
+  satellite: { yMin: 24, yMax: 44, speed: 20, drops: 2, hitRadius: 4 },
 } as const;
 
 /**
- * Smart bombs (M3.3): from `firstWave`, a launched warhead may be a smart bomb. It has no
- * trail, and when a blast comes within `senseMargin` pixels of reaching it, it steers away
- * from the blast at `dodgeSpeed` px/s, then heads back to its target. `dodgeSpeed` must stay
- * below a blast's growth speed (BLAST.maxRadius / BLAST.growMs, 40 px/s), or a smart bomb
- * could never be caught: at 24 px/s a shot within about 5 px still catches one.
+ * Smart bombs (M3.3): a launched warhead may be a smart bomb (how often is part of the wave's
+ * enemy mix, `WAVES`). It has no trail, and when a blast comes within `senseMargin` pixels of
+ * reaching it, it steers away from the blast at `dodgeSpeed` px/s, then heads back to its
+ * target. `dodgeSpeed` must stay below a blast's growth speed (BLAST.maxRadius / BLAST.growMs,
+ * 40 px/s), or a smart bomb could never be caught: at 24 px/s a shot within about 5 px still
+ * catches one.
  */
 export const SMART_BOMB = {
-  firstWave: 6,
-  chance: 0.08,
-  chanceStep: 0.02,
-  chanceMax: 0.25,
   senseMargin: 10,
   dodgeSpeed: 24,
-  points: 125,
 } as const;
 
 /**
- * Splitting warheads (MIRVs, M3.1): from `firstWave`, each launched warhead may be one. It
- * looks like any other until it reaches its split row, then becomes 2 or 3 warheads aimed at
- * different targets. Shooting it down before the split stops all of them.
+ * Splitting warheads (MIRVs, M3.1): a launched warhead may be a MIRV (how often is part of the
+ * wave's enemy mix, `WAVES`). It looks like any other until it reaches its split row, then
+ * becomes 2 or 3 warheads aimed at different targets. Shooting it down before the split stops
+ * all of them.
  */
 export const MIRV = {
-  firstWave: 3,
-  /** Chance on `firstWave`, rising by `chanceStep` each wave up to `chanceMax`. */
-  chance: 0.1,
-  chanceStep: 0.03,
-  chanceMax: 0.35,
   /** The split happens somewhere between these rows. */
   splitYMin: 50,
   splitYMax: 120,
@@ -146,6 +124,12 @@ export interface WaveSpec {
   readonly launchGapMaxMs: number;
   /** Chance that a launch is a pair fired together. */
   readonly pairChance: number;
+  /** Enemy mix (M3.4): chance that a launched warhead is a MIRV, or a smart bomb. */
+  readonly mirvChance: number;
+  readonly smartBombChance: number;
+  /** Bombers and satellites sent this wave, and the chance that each is a satellite. */
+  readonly raiders: number;
+  readonly satelliteChance: number;
 }
 
 /**
@@ -165,6 +149,16 @@ export const WAVES: {
     readonly gapMaxFloorMs: number;
     readonly pairStep: number;
     readonly pairMax: number;
+    readonly mirvStep: number;
+    readonly mirvMax: number;
+    /** Smart bombs start at `smartBombFromWave` with `smartBombStart`, then rise by the step. */
+    readonly smartBombFromWave: number;
+    readonly smartBombStart: number;
+    readonly smartBombStep: number;
+    readonly smartBombMax: number;
+    /** One more raider every `raiderEveryWaves` waves after the hand-set ones, up to the cap. */
+    readonly raiderEveryWaves: number;
+    readonly raidersMax: number;
   };
 } = {
   handSet: [
@@ -177,6 +171,10 @@ export const WAVES: {
       launchGapMinMs: 700,
       launchGapMaxMs: 2200,
       pairChance: 0.25,
+      mirvChance: 0,
+      smartBombChance: 0,
+      raiders: 0,
+      satelliteChance: 0,
     },
     {
       count: 14,
@@ -186,6 +184,11 @@ export const WAVES: {
       launchGapMinMs: 650,
       launchGapMaxMs: 2000,
       pairChance: 0.3,
+      // Bombers arrive.
+      mirvChance: 0,
+      smartBombChance: 0,
+      raiders: 1,
+      satelliteChance: 0,
     },
     {
       count: 16,
@@ -195,6 +198,11 @@ export const WAVES: {
       launchGapMinMs: 600,
       launchGapMaxMs: 1800,
       pairChance: 0.35,
+      // MIRVs arrive.
+      mirvChance: 0.1,
+      smartBombChance: 0,
+      raiders: 1,
+      satelliteChance: 0,
     },
     {
       count: 18,
@@ -204,6 +212,11 @@ export const WAVES: {
       launchGapMinMs: 550,
       launchGapMaxMs: 1600,
       pairChance: 0.4,
+      // Satellites join the bombers.
+      mirvChance: 0.13,
+      smartBombChance: 0,
+      raiders: 2,
+      satelliteChance: 0.4,
     },
   ],
   formula: {
@@ -217,12 +230,25 @@ export const WAVES: {
     gapMaxFloorMs: 700,
     pairStep: 0.03,
     pairMax: 0.6,
+    mirvStep: 0.03,
+    mirvMax: 0.35,
+    // Smart bombs arrive at wave 6.
+    smartBombFromWave: 6,
+    smartBombStart: 0.08,
+    smartBombStep: 0.02,
+    smartBombMax: 0.25,
+    raiderEveryWaves: 2,
+    raidersMax: 4,
   },
 };
 
 /** Points. */
 export const SCORE = {
+  /** Points for each enemy destroyed (arcade values), before the wave multiplier. */
   warhead: 25,
+  smartBomb: 125,
+  bomber: 100,
+  satellite: 100,
   /** End-of-wave bonus for each missile left in a standing base (arcade value). */
   missileLeft: 5,
   /** End-of-wave bonus for each city still standing (arcade value). */
