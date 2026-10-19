@@ -488,6 +488,24 @@ export const SHAKE = {
   durationMs: 250,
 } as const;
 
+/**
+ * Optional bloom (M4.7, ADR-NW04): bright pixels (trails, blasts, fire) bleed a soft light. On
+ * where WebGL is available; switched off for the rest of the game when the frame rate stays low.
+ */
+export const BLOOM = {
+  /** Only pixels brighter than this (0..1) glow. */
+  threshold: 0.6,
+  blurRadius: 2,
+  blurSteps: 4,
+  /** How much of the glow is added back (0..1). */
+  amount: 0.6,
+  /** Watchdog: ignore the first 2 s, then switch off after 3 s averaging under 50 fps. */
+  warmupMs: 2000,
+  slowFrameMs: 20,
+  slowForMs: 3000,
+  smoothing: 0.05,
+} as const;
+
 /** Phone vibration (M4.8): on/off pattern in milliseconds when a city or base is destroyed. */
 export const VIBRATION = {
   cityHit: [90, 50, 60],

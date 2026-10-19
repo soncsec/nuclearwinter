@@ -7,6 +7,7 @@ import {
   CONFIRM_KEYS,
   DEFAULT_SEED,
   ASH,
+  BLOOM,
   EFFECTS,
   VIBRATION,
   GLOOM,
@@ -33,6 +34,7 @@ import type { Point } from '../logic/geometry';
 import { createStreams, deriveSeed, type RandomStreams } from '../logic/rng';
 import { litWindows, type CityWindow } from '../logic/scenery';
 import { loadSettings, type Settings } from '../logic/settings';
+import { createBloomGovernor, observeFrame, type BloomGovernor } from '../logic/quality';
 import { vibrate } from '../logic/haptics';
 import { easeToward, gloomTarget } from '../logic/gloom';
 import { ashAlpha, createAsh, stepAsh, visibleFlakes, type Flake } from '../logic/ash';
@@ -82,6 +84,8 @@ export interface DebugStats {
   /** Explosion sprites playing, and the pool's size. */
   effects: number;
   effectPool: number;
+  /** Whether the optional bloom filter is on (M4.7). */
+  bloom: boolean;
 }
 
 /** A normal game, or the daily challenge (same seed for everyone on a UTC day, own best). */
@@ -139,6 +143,9 @@ export interface GameSnapshot {
   /** City-hit flashes and screen shakes started this game. */
   flashes: number;
   shakes: number;
+  /** The renderer, and whether the optional bloom filter is on (M4.7). */
+  renderer: 'webgl' | 'canvas';
+  bloom: boolean;
   /** Phone vibrations asked for this game (M4.8). */
   vibrations: number;
   /** Nuclear winter: 0 with every city standing, 1 with all lost (M4.4), and flakes showing. */
@@ -169,6 +176,9 @@ export class GameScene extends Phaser.Scene {
   private sparks!: ParticlePool;
   private sparkBursts = 0;
   private backdrop!: Backdrop;
+  /** Optional bloom on the camera (WebGL only), and the watchdog that turns it off (M4.7). */
+  private bloomFilter: Phaser.Filters.ParallelFilters | null = null;
+  private bloomGov!: BloomGovernor;
   /** Read when the game starts; the settings screen is only reachable from the title. */
   private settings!: Settings;
   private gloom = 0;
@@ -240,6 +250,7 @@ export class GameScene extends Phaser.Scene {
     this.paused = false;
     this.backdrop = new Backdrop(this);
     this.settings = loadSettings(browserStore());
+    this.setUpBloom();
     this.gloom = 0;
 
     this.defenses = this.add.graphics();
@@ -287,6 +298,8 @@ export class GameScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setBlendMode(Phaser.BlendModes.ADD)
       .setVisible(false);
+    // Everything from here on is the HUD (score, wave, pause button, messages).
+    const hudStart = this.children.list.length;
     this.scoreText = this.add.text(HUD.margin, HUD.margin, '', {
       fontFamily: FONT_FAMILY,
       fontSize: `${HUD.fontSizePx}px`,
@@ -341,6 +354,7 @@ export class GameScene extends Phaser.Scene {
       .setVisible(false);
     this.bannersShown = [];
     this.showWave();
+    this.keepHudOutOfBloom(hudStart);
 
     // One input path for mouse and touch (ADR-NW06): a tap on the pause button pauses or
     // resumes; any other tap fires while playing, or confirms the screen that is showing.
@@ -376,6 +390,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   override update(_time: number, deltaMs: number): void {
+    this.watchFrameRate(deltaMs);
     if (this.paused) {
       // Time spent paused is not simulated when play resumes.
       this.pendingMs = 0;
@@ -478,6 +493,7 @@ export class GameScene extends Phaser.Scene {
       blasts: w.blasts.length,
       effects: this.effects.activeCount,
       effectPool: EFFECTS.poolSize,
+      bloom: this.bloomGov.on,
     };
   }
 
@@ -514,6 +530,8 @@ export class GameScene extends Phaser.Scene {
       sparkBursts: this.sparkBursts,
       flashes: this.flashes,
       shakes: this.shakes,
+      renderer: this.isWebGL() ? 'webgl' : 'canvas',
+      bloom: this.bloomGov.on,
       vibrations: this.vibrations,
       gloom: this.gloom,
       ashFlakes: visibleFlakes(this.gloom),
@@ -828,6 +846,51 @@ export class GameScene extends Phaser.Scene {
       if (!p.alive) continue;
       g.fillStyle(p.color, particleFade(p)).fillRect(Math.round(p.x), Math.round(p.y), 1, 1);
     }
+  }
+
+  private isWebGL(): boolean {
+    return this.game.renderer.type === Phaser.WEBGL;
+  }
+
+  /** Bloom where WebGL is available (ADR-NW04); Canvas keeps the additive glow only. */
+  private setUpBloom(): void {
+    const webgl = this.isWebGL();
+    this.bloomFilter = null;
+    if (webgl) {
+      const [bloom] = Phaser.Actions.AddEffectBloom(this.cameras.main, {
+        threshold: BLOOM.threshold,
+        blurRadius: BLOOM.blurRadius,
+        blurSteps: BLOOM.blurSteps,
+        blendAmount: BLOOM.amount,
+      });
+      this.bloomFilter = bloom?.parallelFilters ?? null;
+    }
+    this.bloomGov = createBloomGovernor(this.bloomFilter !== null, STEP_MS);
+  }
+
+  /**
+   * Bloom would blur the bright HUD text into a smudge, so with bloom the HUD gets its own
+   * camera without filters, and the bloomed main camera draws only the playfield.
+   */
+  private keepHudOutOfBloom(hudStart: number): void {
+    if (!this.bloomFilter) return;
+    const all = this.children.list;
+    const hud = all.slice(hudStart);
+    const hudCamera = this.cameras.add(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    this.cameras.main.ignore(hud);
+    hudCamera.ignore(all.slice(0, hudStart));
+  }
+
+  /** Switches bloom off for the rest of the game once the frame rate stays low. */
+  private watchFrameRate(frameMs: number): void {
+    if (observeFrame(this.bloomGov, frameMs, BLOOM) && this.bloomFilter) {
+      this.bloomFilter.active = false;
+    }
+  }
+
+  /** For the test hook: feeds slow (or fast) frame times to the bloom watchdog. */
+  testFeedFrames(frameMs: number, totalMs: number): void {
+    for (let t = 0; t < totalMs; t += frameMs) this.watchFrameRate(frameMs);
   }
 
   /** The sky darkens and the ash thickens as cities are lost; both ease in gradually. */
