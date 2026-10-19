@@ -4,6 +4,7 @@ import {
   GAME_WIDTH,
   GROUND_Y,
   INTERCEPTOR,
+  MIRV,
   SCORE,
   WARHEAD,
   type WaveSpec,
@@ -38,6 +39,10 @@ export interface Warhead {
   pos: Point;
   /** Pixels per second. */
   readonly speed: number;
+  /** A MIRV: splits into `count` warheads when it reaches row `atY`. */
+  readonly split?: { readonly atY: number; readonly count: number };
+  /** For a warhead born from a split: where the parent's trail began, so it stays drawn. */
+  readonly stemFrom?: Point;
 }
 
 export interface Interceptor {
@@ -65,6 +70,8 @@ export type GameEvent =
   | { readonly type: 'blast'; readonly center: Point; readonly kind: Blast['kind'] }
   | { readonly type: 'warheadDestroyed'; readonly at: Point; readonly points: number }
   | { readonly type: 'impact'; readonly at: Point }
+  /** A MIRV split into `count` warheads at `at`. */
+  | { readonly type: 'warheadSplit'; readonly at: Point; readonly count: number }
   | { readonly type: 'cityDestroyed'; readonly index: number; readonly at: Point }
   | { readonly type: 'baseDestroyed'; readonly index: number; readonly at: Point }
   | { readonly type: 'waveCleared'; readonly number: number; readonly bonus: WaveBonus }
@@ -210,10 +217,22 @@ export function fire(world: World, target: Point, chosenBase?: number): boolean 
   return true;
 }
 
-export function launchWarhead(world: World, origin: Point, target: Point, speed: number): Warhead {
-  const warhead: Warhead = { id: world.nextId++, origin, target, pos: origin, speed };
+export function launchWarhead(
+  world: World,
+  origin: Point,
+  target: Point,
+  speed: number,
+  extra: Pick<Warhead, 'split' | 'stemFrom'> = {},
+): Warhead {
+  const warhead: Warhead = { id: world.nextId++, origin, target, pos: origin, speed, ...extra };
   world.warheads.push(warhead);
   return warhead;
+}
+
+/** The chance that a warhead launched on this wave is a MIRV. */
+export function mirvChance(waveNumber: number, rule: typeof MIRV = MIRV): number {
+  if (waveNumber < rule.firstWave) return 0;
+  return Math.min(rule.chanceMax, rule.chance + (waveNumber - rule.firstWave) * rule.chanceStep);
 }
 
 /** Returns and clears the events since the last call. */
@@ -230,6 +249,7 @@ export function step(world: World, rng: Rng, dtMs: number): void {
   launchDueWarheads(world, rng);
   moveInterceptors(world, dtMs);
   moveWarheads(world, dtMs);
+  splitWarheads(world, rng);
   ageBlasts(world, dtMs);
   destroyWarheadsInBlasts(world);
   updatePhase(world);
@@ -240,22 +260,38 @@ function launchDueWarheads(world: World, rng: Rng): void {
   const spec = wave.spec;
   while (wave.toLaunch > 0 && world.timeMs >= wave.nextLaunchMs) {
     const count = wave.toLaunch >= 2 && rng.next() < spec.pairChance ? 2 : 1;
+    // MIRVs draw on the RNG only from their first wave, so earlier waves replay unchanged.
+    const chance = mirvChance(wave.number);
     for (let i = 0; i < count; i++) {
       const origin = { x: rng.range(0, GAME_WIDTH), y: WARHEAD.spawnY };
-      launchWarhead(world, origin, pickTarget(world, rng), rng.range(spec.speedMin, spec.speedMax));
+      const target = pickTarget(world, rng);
+      const speed = rng.range(spec.speedMin, spec.speedMax);
+      const split =
+        chance > 0 && rng.next() < chance
+          ? {
+              atY: rng.range(MIRV.splitYMin, MIRV.splitYMax),
+              count: rng.int(MIRV.childrenMin, MIRV.childrenMax),
+            }
+          : undefined;
+      launchWarhead(world, origin, target, speed, split ? { split } : {});
     }
     wave.toLaunch -= count;
     wave.nextLaunchMs += rng.range(spec.launchGapMinMs, spec.launchGapMaxMs);
   }
 }
 
-/** Warheads aim at a surviving city or base; with none left, anywhere on the ground. */
-function pickTarget(world: World, rng: Rng): Point {
+/**
+ * Warheads aim at a surviving city or base; with none left, anywhere on the ground.
+ * Targets in `avoid` are skipped while others remain, so a MIRV's warheads fan out.
+ */
+function pickTarget(world: World, rng: Rng, avoid: readonly number[] = []): Point {
   const xs = [
     ...world.cities.filter((c) => c.alive).map((c) => c.x),
     ...world.bases.filter((b) => b.alive).map((b) => b.x),
   ];
-  const x = xs.length > 0 ? rng.pick(xs) : rng.range(0, GAME_WIDTH);
+  const fresh = xs.filter((x) => !avoid.includes(x));
+  const choices = fresh.length > 0 ? fresh : xs;
+  const x = choices.length > 0 ? rng.pick(choices) : rng.range(0, GAME_WIDTH);
   return { x, y: GROUND_Y };
 }
 
@@ -276,6 +312,26 @@ function moveWarheads(world: World, dtMs: number): void {
     if (arrived) hitGround(world, pos);
     return !arrived;
   });
+}
+
+/** MIRVs that have reached their split row become several warheads, each aimed anew. */
+function splitWarheads(world: World, rng: Rng): void {
+  const splitting = world.warheads.filter((w) => w.split && w.pos.y >= w.split.atY);
+  if (splitting.length === 0) return;
+  world.warheads = world.warheads.filter((w) => !splitting.includes(w));
+  for (const parent of splitting) {
+    const count = parent.split?.count ?? 0;
+    const at = { ...parent.pos };
+    const aimed: number[] = [];
+    for (let i = 0; i < count; i++) {
+      const target = pickTarget(world, rng, aimed);
+      aimed.push(target.x);
+      launchWarhead(world, at, target, parent.speed, {
+        stemFrom: parent.stemFrom ?? parent.origin,
+      });
+    }
+    world.events.push({ type: 'warheadSplit', at, count });
+  }
 }
 
 function hitGround(world: World, at: Point): void {

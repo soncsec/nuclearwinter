@@ -85,6 +85,8 @@ export interface GameSnapshot {
   hudHigh: string;
   /** Explosion sprites playing right now. */
   effects: number;
+  /** MIRV splits so far this game. */
+  splits: number;
   /** Explosion sprites started so far, by kind. */
   effectsPlayed: { impact: number; cityHit: number };
   /** Lines of the paused, wave-cleared or game-over message, empty while playing. */
@@ -106,6 +108,7 @@ export class GameScene extends Phaser.Scene {
   private lastShot: GameSnapshot['lastShot'] = null;
   private effects!: EffectPool;
   private effectsPlayed = { impact: 0, cityHit: 0 };
+  private splits = 0;
   private scoreText!: Phaser.GameObjects.Text;
   private highText!: Phaser.GameObjects.Text;
   /** The best score saved in this browser when this game started. */
@@ -167,6 +170,7 @@ export class GameScene extends Phaser.Scene {
     this.fx = this.add.graphics();
     this.effects = new EffectPool(this, [IMPACT, CITY_HIT], EFFECTS.poolSize);
     this.effectsPlayed = { impact: 0, cityHit: 0 };
+    this.splits = 0;
 
     this.scoreText = this.add.text(HUD.margin, HUD.margin, '', {
       fontFamily: FONT_FAMILY,
@@ -286,9 +290,14 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** For the test hook: launches a warhead directly. */
-  testLaunchWarhead(origin: Point, target: Point, speed: number): void {
-    launchWarhead(this.world, origin, target, speed);
+  /** For the test hook: launches a warhead directly, optionally a MIRV. */
+  testLaunchWarhead(
+    origin: Point,
+    target: Point,
+    speed: number,
+    split?: { atY: number; count: number },
+  ): void {
+    launchWarhead(this.world, origin, target, speed, split ? { split } : {});
   }
 
   /**
@@ -362,6 +371,7 @@ export class GameScene extends Phaser.Scene {
       hudHigh: this.highText.text,
       effects: this.effects.activeCount,
       effectsPlayed: { ...this.effectsPlayed },
+      splits: this.splits,
       message: this.messageLines.filter((t) => t.visible).map((t) => t.text),
     };
   }
@@ -379,6 +389,9 @@ export class GameScene extends Phaser.Scene {
           break;
         case 'impact':
           this.playEffect(IMPACT, e.at);
+          break;
+        case 'warheadSplit':
+          this.splits++;
           break;
         case 'cityDestroyed':
           this.playEffect(CITY_HIT, { x: this.world.cities[e.index]?.x ?? e.at.x, y: GROUND_Y });
@@ -581,6 +594,8 @@ export class GameScene extends Phaser.Scene {
     const g = this.fx.clear();
     for (const h of this.world.warheads) {
       g.lineStyle(1, COLORS.warheadTrail, TRAILS.alpha);
+      // A warhead born from a split keeps its parent's trail down to the split point.
+      if (h.stemFrom) g.lineBetween(h.stemFrom.x, h.stemFrom.y, h.origin.x, h.origin.y);
       g.lineBetween(h.origin.x, h.origin.y, h.pos.x, h.pos.y);
       g.fillStyle(COLORS.warheadHead).fillRect(Math.round(h.pos.x), Math.round(h.pos.y), 1, 1);
     }
