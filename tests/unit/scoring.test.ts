@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { SCORE } from '../../src/config/tuning';
-import { bonusCitiesEarned, countUp, formatScore, waveBonus } from '../../src/logic/scoring';
+import {
+  bonusCitiesEarned,
+  countUp,
+  formatScore,
+  waveBonus,
+  waveMultiplier,
+} from '../../src/logic/scoring';
 
 describe('formatScore', () => {
   it('pads to the given number of digits', () => {
@@ -23,6 +29,7 @@ describe('waveBonus', () => {
     expect(waveBonus(6, 30)).toEqual({
       citiesSaved: 6,
       missilesLeft: 30,
+      multiplier: 1,
       cityPoints: 6 * SCORE.citySaved,
       missilePoints: 30 * SCORE.missileLeft,
       total: 6 * SCORE.citySaved + 30 * SCORE.missileLeft,
@@ -30,7 +37,7 @@ describe('waveBonus', () => {
   });
 
   it('uses the given point values', () => {
-    expect(waveBonus(2, 4, { citySaved: 10, missileLeft: 1 }).total).toBe(24);
+    expect(waveBonus(2, 4, 1, { citySaved: 10, missileLeft: 1 }).total).toBe(24);
   });
 
   it('is zero with nothing left, and ignores negatives and fractions', () => {
@@ -76,5 +83,34 @@ describe('bonusCitiesEarned', () => {
   it('earns nothing for a negative score or a bad threshold', () => {
     expect(bonusCitiesEarned(-500)).toBe(0);
     expect(bonusCitiesEarned(50_000, 0)).toBe(0);
+  });
+});
+
+describe('waveMultiplier', () => {
+  it('follows the arcade steps: 1x, 1x, 2x, 2x, 3x ... capped at 6x', () => {
+    const got = Array.from({ length: 14 }, (_, i) => waveMultiplier(i + 1));
+    expect(got).toEqual([1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 6]);
+    expect(waveMultiplier(1000)).toBe(SCORE.multiplierMax);
+  });
+
+  it('treats a wave below 1 or a broken rule as safely as it can', () => {
+    expect(waveMultiplier(0)).toBe(1);
+    expect(waveMultiplier(-3)).toBe(1);
+    expect(waveMultiplier(5, { multiplierEvery: 0, multiplierMax: 3 })).toBe(3);
+    expect(waveMultiplier(5, { multiplierEvery: 2, multiplierMax: 0 })).toBe(1);
+  });
+});
+
+describe('waveBonus with a multiplier', () => {
+  it('multiplies both parts of the bonus', () => {
+    const b = waveBonus(5, 28, 3);
+    expect(b.multiplier).toBe(3);
+    expect(b.cityPoints).toBe(5 * SCORE.citySaved * 3);
+    expect(b.missilePoints).toBe(28 * SCORE.missileLeft * 3);
+    expect(b.total).toBe(b.cityPoints + b.missilePoints);
+  });
+
+  it('never multiplies by less than 1', () => {
+    expect(waveBonus(1, 0, 0).total).toBe(SCORE.citySaved);
   });
 });
