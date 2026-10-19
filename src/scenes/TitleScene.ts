@@ -1,6 +1,15 @@
 import Phaser from 'phaser';
 import { FONT_FAMILY, IMAGES, SHEETS } from '../assets/manifest';
-import { COLORS, CONFIRM_KEYS, DAILY_KEY, GAME_WIDTH, HUD, SCREENS, TITLE } from '../config/tuning';
+import {
+  COLORS,
+  CONFIRM_KEYS,
+  DAILY_KEY,
+  GAME_WIDTH,
+  HUD,
+  SCREENS,
+  SETTINGS_KEY,
+  TITLE,
+} from '../config/tuning';
 import { loadDailyBest, utcDateKey } from '../logic/daily';
 import { loadHighScore } from '../logic/highScore';
 import { formatScore } from '../logic/scoring';
@@ -70,6 +79,23 @@ export class TitleScene extends Phaser.Scene {
       }),
     );
 
+    // Settings (M4.5): a smaller band under the daily challenge.
+    this.add
+      .rectangle(
+        GAME_WIDTH / 2,
+        TITLE.settingsY + HUD.fontSizePx / 2,
+        TITLE.settingsPanelWidth,
+        TITLE.settingsPanelHeight,
+        COLORS.messagePanel,
+      )
+      .setAlpha(SCREENS.panelAlpha)
+      .setStrokeStyle(1, COLORS.dailyButton);
+    this.texts.push(
+      centredText(this, TITLE.settingsY, `${touch ? '' : 'S  '}SETTINGS`, {
+        color: COLORS.title,
+      }),
+    );
+
     // The build number, so a play-test report can say exactly which build it was (M3.7).
     this.texts.push(
       this.add
@@ -86,11 +112,15 @@ export class TitleScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       const onDaily =
         Math.abs(p.worldY - (TITLE.dailyY + HUD.fontSizePx / 2)) <= TITLE.dailyTapHalfHeight;
-      this.startGame(onDaily ? 'daily' : 'normal');
+      const onSettings =
+        Math.abs(p.worldY - (TITLE.settingsY + HUD.fontSizePx / 2)) <= TITLE.settingsTapHalfHeight;
+      if (onSettings) this.openSettings();
+      else this.startGame(onDaily ? 'daily' : 'normal');
     });
     this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
       if (key === DAILY_KEY) this.startGame('daily');
+      else if (key === SETTINGS_KEY) this.openSettings();
       else if (CONFIRM_KEYS.includes(key)) this.startGame('normal');
     });
   }
@@ -103,6 +133,13 @@ export class TitleScene extends Phaser.Scene {
   /** Every line on the screen, top to bottom (for the test hook). */
   lines(): string[] {
     return this.texts.map((t) => t.text);
+  }
+
+  /** Opens the settings screen. */
+  openSettings(): void {
+    if (this.started) return;
+    this.started = true;
+    this.scene.start('Settings');
   }
 
   /** Starts a game. Taps, keys and the test hook call it; a second call does nothing. */

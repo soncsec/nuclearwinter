@@ -31,6 +31,7 @@ import { blastRadius } from '../logic/blast';
 import type { Point } from '../logic/geometry';
 import { createStreams, deriveSeed, type RandomStreams } from '../logic/rng';
 import { litWindows, type CityWindow } from '../logic/scenery';
+import { loadSettings, type Settings } from '../logic/settings';
 import { easeToward, gloomTarget } from '../logic/gloom';
 import { ashAlpha, createAsh, stepAsh, visibleFlakes, type Flake } from '../logic/ash';
 import {
@@ -164,6 +165,8 @@ export class GameScene extends Phaser.Scene {
   private sparks!: ParticlePool;
   private sparkBursts = 0;
   private backdrop!: Backdrop;
+  /** Read when the game starts; the settings screen is only reachable from the title. */
+  private settings!: Settings;
   private gloom = 0;
   private ash: Flake[] = [];
   private ashLayer!: Phaser.GameObjects.Graphics;
@@ -231,6 +234,7 @@ export class GameScene extends Phaser.Scene {
 
     this.paused = false;
     this.backdrop = new Backdrop(this);
+    this.settings = loadSettings(browserStore());
     this.gloom = 0;
 
     this.defenses = this.add.graphics();
@@ -849,8 +853,13 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** A city or base was destroyed: shake the screen, and flash it if the safe limit allows. */
+  /**
+   * A city or base was destroyed: shake the screen, and flash it if the safe limit allows,
+   * unless the player chose "reduce flashing".
+   */
   private hitFeedback(): void {
+    // "Reduce flashing" turns off both the flash and the shake (M4.5).
+    if (this.settings.reduceFlashing) return;
     const now = this.time.now;
     this.shakeStartedAt = now;
     this.shakes++;

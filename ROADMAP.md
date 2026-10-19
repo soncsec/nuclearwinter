@@ -95,7 +95,7 @@
 - [x] M4.2 Glowing missile trails and blast glow (additive), particles
 - [x] M4.3 Screen shake and the city-hit flash, kept under the safe-flash limit
 - [x] M4.4 Falling ash and a darkening sky that thicken as cities are lost
-- [ ] M4.5 Settings screen: "reduce flashing" (also turns off screen shake) and vibration, saved in localStorage; mute joins it in M6
+- [x] M4.5 Settings screen: "reduce flashing" (also turns off screen shake) and vibration, saved in localStorage; mute joins it in M6
 - [ ] M4.6 Press Start 2P HUD and screens
 - [ ] M4.7 Optional bloom filter, switched off automatically when the frame rate drops (ADR-NW04)
 - [ ] M4.8 Phone vibration on city hits (Vibration API where supported), with a setting

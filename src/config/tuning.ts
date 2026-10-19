@@ -577,13 +577,38 @@ export const TITLE = {
   dailyY: 170,
   /** The build number, small and dim in the ground strip at the bottom right. */
   buildY: 206,
-  dailyTapHalfHeight: 10,
+  dailyTapHalfHeight: 9,
   dailyPanelWidth: 260,
   dailyPanelHeight: 16,
+  /** The settings button, under the daily challenge. */
+  settingsY: 188,
+  settingsTapHalfHeight: 7,
+  settingsPanelWidth: 120,
+  settingsPanelHeight: 14,
+} as const;
+
+/** The settings screen (M4.5): its rows, and the keys that toggle them on desktop. */
+export const SETTINGS = {
+  /** localStorage key; approved 2026-10-18 for reduce flashing and vibration only. */
+  storageKey: 'nuclearwinter.settings',
+  titleY: 36,
+  /** Each option's row, and the hint line under it. */
+  rowYs: [84, 120],
+  hintGap: 15,
+  backY: 170,
+  rowTapHalfHeight: 10,
+  panelWidth: 300,
+  panelHeight: 16,
+  backPanelWidth: 120,
+  /** Keys: 1 and 2 toggle the options; Escape, Backspace or B go back. */
+  toggleKeys: ['1', '2'],
+  backKeys: ['escape', 'backspace', 'b'],
 } as const;
 
 /** Desktop key that starts the daily challenge from the title screen. */
 export const DAILY_KEY = 'd';
+/** Opens the settings screen from the title. */
+export const SETTINGS_KEY = 's';
 
 /** The pause button: a tap target in the HUD's top-right corner, with a two-bar icon. */
 export const PAUSE = {

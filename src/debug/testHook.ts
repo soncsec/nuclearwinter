@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { Point } from '../logic/geometry';
 import type { GameScene, GameSnapshot } from '../scenes/GameScene';
+import type { SettingsScene } from '../scenes/SettingsScene';
 import type { TitleScene } from '../scenes/TitleScene';
 import type { DebugScene } from './DebugOverlay';
 
@@ -16,6 +17,8 @@ export interface TestHook {
   debugLines(): string[] | null;
   /** The title screen's lines, top to bottom, or null when it is not showing. */
   titleLines(): string[] | null;
+  /** The settings screen's lines, top to bottom, or null when it is not showing. */
+  settingsLines(): string[] | null;
   /** Starts a game from the title screen, as a tap would: normal, or the daily challenge. */
   start(mode?: 'normal' | 'daily'): void;
   /** Tells the game the page was hidden, as switching tabs or apps does. */
@@ -68,6 +71,10 @@ export function installTestHook(game: Phaser.Game): void {
   window.__game = {
     debugLines: () => (game.scene.getScene('Debug') as DebugScene | null)?.lines() ?? null,
     titleLines: () => title()?.lines() ?? null,
+    settingsLines: () =>
+      game.scene.isActive('Settings')
+        ? ((game.scene.getScene('Settings') as SettingsScene | null)?.lines() ?? null)
+        : null,
     start: (mode) => title()?.startGame(mode),
     hide: () => game.events.emit(Phaser.Core.Events.HIDDEN),
     launchWarhead: (origin, target, speed, split) =>
