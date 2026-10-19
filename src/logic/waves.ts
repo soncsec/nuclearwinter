@@ -1,9 +1,9 @@
 import { WAVES, type WaveSpec } from '../config/tuning';
 
 /**
- * Wave number (1, 2, 3, ...) to the wave's launch plan (ADR-NW05). The first waves come from
- * `WAVES.handSet`; later ones step up from the last hand-set wave by `WAVES.formula`, up to its
- * caps, so the game is endless and never gets impossibly fast.
+ * Wave number (1, 2, 3, ...) to the wave's launch plan and enemy mix (ADR-NW05). The first
+ * waves come from `WAVES.handSet`; later ones step up from the last hand-set wave by
+ * `WAVES.formula`, up to its caps, so the game is endless and never gets impossibly fast.
  */
 export function waveSpec(waveNumber: number, waves: typeof WAVES = WAVES): WaveSpec {
   const n = Math.max(1, Math.floor(waveNumber));
@@ -22,5 +22,12 @@ export function waveSpec(waveNumber: number, waves: typeof WAVES = WAVES): WaveS
     launchGapMinMs: Math.max(f.gapMinFloorMs, last.launchGapMinMs - f.gapStepMs * k),
     launchGapMaxMs: Math.max(f.gapMaxFloorMs, last.launchGapMaxMs - f.gapStepMs * k),
     pairChance: Math.min(f.pairMax, last.pairChance + f.pairStep * k),
+    mirvChance: Math.min(f.mirvMax, last.mirvChance + f.mirvStep * k),
+    smartBombChance:
+      n < f.smartBombFromWave
+        ? last.smartBombChance
+        : Math.min(f.smartBombMax, f.smartBombStart + f.smartBombStep * (n - f.smartBombFromWave)),
+    raiders: Math.min(f.raidersMax, last.raiders + Math.floor(k / f.raiderEveryWaves)),
+    satelliteChance: last.satelliteChance,
   };
 }

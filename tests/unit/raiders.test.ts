@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { BLAST, GAME_WIDTH, RAIDERS, SCORE, STEP_MS } from '../../src/config/tuning';
+import { waveSpec } from '../../src/logic/waves';
+import { firstWaveWith } from './mix';
 import { createRng, type Rng } from '../../src/logic/rng';
 import {
   createWorld,
   drainEvents,
   launchRaider,
-  raiderCount,
   startNextWave,
   step,
   type World,
@@ -23,14 +24,7 @@ function run(world: World, rng: Rng, ms: number): void {
   for (let t = 0; t < ms && world.phase === 'playing'; t += STEP_MS) step(world, rng, STEP_MS);
 }
 
-describe('raider count per wave', () => {
-  it('starts at RAIDERS.firstWave, grows every few waves, and stops at the cap', () => {
-    expect(raiderCount(1)).toBe(0);
-    expect(raiderCount(RAIDERS.firstWave)).toBe(RAIDERS.countBase);
-    expect(raiderCount(RAIDERS.firstWave + RAIDERS.countStepWaves)).toBe(RAIDERS.countBase + 1);
-    expect(raiderCount(1000)).toBe(RAIDERS.countMax);
-  });
-
+describe('raiders per wave', () => {
   it('wave 1 has none and wave 2 schedules them', () => {
     const w = createWorld();
     expect(w.wave.raidersToLaunch).toBe(0);
@@ -38,7 +32,8 @@ describe('raider count per wave', () => {
     run(w, createRng(1), STEP_MS * 2);
     expect(w.phase).toBe('waveCleared');
     startNextWave(w);
-    expect(w.wave.raidersToLaunch).toBe(raiderCount(2));
+    expect(w.wave.raidersToLaunch).toBe(waveSpec(2).raiders);
+    expect(waveSpec(2).raiders).toBeGreaterThan(0);
   });
 });
 
@@ -84,7 +79,7 @@ describe('raiders', () => {
     w.blasts.push({ id: 99, center: { x: 100 + gap, y: 60 }, ageMs: BLAST.growMs, kind: 'player' });
     step(w, createRng(1), STEP_MS);
     expect(w.raiders).toEqual([]);
-    expect(w.score).toBe(RAIDERS.bomber.points * 2);
+    expect(w.score).toBe(SCORE.bomber * 2);
     expect(drainEvents(w)).toContainEqual(
       expect.objectContaining({ type: 'raiderDestroyed', kind: 'bomber', points: 200 }),
     );
@@ -117,7 +112,14 @@ describe('raiders', () => {
   it('launch on schedule: satellites only from their first wave (seeded)', () => {
     const kindsOn = (waveNumber: number): string[] => {
       const w = createWorld();
-      w.wave = { ...w.wave, number: waveNumber, toLaunch: 0, raidersToLaunch: 50, nextRaiderMs: 0 };
+      w.wave = {
+        ...w.wave,
+        number: waveNumber,
+        spec: waveSpec(waveNumber),
+        toLaunch: 0,
+        raidersToLaunch: 50,
+        nextRaiderMs: 0,
+      };
       const rng = createRng(9);
       const kinds: string[] = [];
       for (let i = 0; i < 50; i++) {
@@ -129,13 +131,14 @@ describe('raiders', () => {
       }
       return kinds;
     };
-    expect(kindsOn(RAIDERS.satellite.firstWave - 1)).not.toContain('satellite');
-    const later = kindsOn(RAIDERS.satellite.firstWave);
+    expect(kindsOn(firstWaveWith('satelliteChance') - 1)).not.toContain('satellite');
+    const later = kindsOn(firstWaveWith('satelliteChance'));
     expect(later).toContain('satellite');
     expect(later).toContain('bomber');
   });
 
   it('are worth more than a warhead', () => {
-    expect(RAIDERS.bomber.points).toBeGreaterThan(SCORE.warhead);
+    expect(SCORE.bomber).toBeGreaterThan(SCORE.warhead);
+    expect(SCORE.satellite).toBeGreaterThan(SCORE.warhead);
   });
 });

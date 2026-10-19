@@ -167,16 +167,9 @@ function newWave(number: number, timeMs: number): WaveState {
     spec,
     toLaunch: spec.count,
     nextLaunchMs: timeMs + spec.firstLaunchMs,
-    raidersToLaunch: raiderCount(number),
+    raidersToLaunch: spec.raiders,
     nextRaiderMs: timeMs + RAIDERS.firstSpawnMs,
   };
-}
-
-/** How many bombers and satellites a wave sends. */
-export function raiderCount(waveNumber: number, rule: typeof RAIDERS = RAIDERS): number {
-  if (waveNumber < rule.firstWave) return 0;
-  const extra = Math.floor((waveNumber - rule.firstWave) / rule.countStepWaves);
-  return Math.min(rule.countMax, rule.countBase + extra);
 }
 
 /**
@@ -295,12 +288,6 @@ export function launchWarhead(
   return warhead;
 }
 
-/** The chance that a warhead launched on this wave is a smart bomb. */
-export function smartBombChance(waveNumber: number, rule: typeof SMART_BOMB = SMART_BOMB): number {
-  if (waveNumber < rule.firstWave) return 0;
-  return Math.min(rule.chanceMax, rule.chance + (waveNumber - rule.firstWave) * rule.chanceStep);
-}
-
 /**
  * One step of a smart bomb: towards its target at `speed`, pushed away at `dodgeSpeed` from
  * every blast that is within `senseMargin` of reaching it. Stays on screen.
@@ -330,12 +317,6 @@ export function smartStep(
   }
   const next = { x: clamp(pos.x + vx * dt, 0, GAME_WIDTH), y: pos.y + vy * dt };
   return { pos: next, arrived: false };
-}
-
-/** The chance that a warhead launched on this wave is a MIRV. */
-export function mirvChance(waveNumber: number, rule: typeof MIRV = MIRV): number {
-  if (waveNumber < rule.firstWave) return 0;
-  return Math.min(rule.chanceMax, rule.chance + (waveNumber - rule.firstWave) * rule.chanceStep);
 }
 
 /** Returns and clears the events since the last call. */
@@ -368,8 +349,8 @@ function launchDueWarheads(world: World, rng: Rng): void {
     const count = wave.toLaunch >= 2 && rng.next() < spec.pairChance ? 2 : 1;
     // MIRVs and smart bombs draw on the RNG only from their first waves, so earlier waves
     // replay unchanged.
-    const chance = mirvChance(wave.number);
-    const smartChance = smartBombChance(wave.number);
+    const chance = spec.mirvChance;
+    const smartChance = spec.smartBombChance;
     for (let i = 0; i < count; i++) {
       const origin = { x: rng.range(0, GAME_WIDTH), y: WARHEAD.spawnY };
       const target = pickTarget(world, rng);
@@ -430,9 +411,8 @@ function moveWarheads(world: World, dtMs: number): void {
 function launchDueRaiders(world: World, rng: Rng): void {
   const wave = world.wave;
   while (wave.raidersToLaunch > 0 && world.timeMs >= wave.nextRaiderMs) {
-    const sat = RAIDERS.satellite;
-    const kind: RaiderKind =
-      wave.number >= sat.firstWave && rng.next() < sat.chance ? 'satellite' : 'bomber';
+    const satChance = wave.spec.satelliteChance;
+    const kind: RaiderKind = satChance > 0 && rng.next() < satChance ? 'satellite' : 'bomber';
     const spec = RAIDERS[kind];
     const dir = rng.next() < 0.5 ? 1 : -1;
     launchRaider(world, kind, rng.range(spec.yMin, spec.yMax), dir);
@@ -471,7 +451,7 @@ function destroyRaidersInBlasts(world: World): void {
       (b) => distance(b.center, r.pos) <= blastRadius(b.ageMs) + reach,
     );
     if (caught) {
-      const points = RAIDERS[r.kind].points * waveMultiplier(world.wave.number);
+      const points = SCORE[r.kind] * waveMultiplier(world.wave.number);
       world.score += points;
       const at = { ...r.pos };
       world.events.push({ type: 'raiderDestroyed', kind: r.kind, at, points });
@@ -539,7 +519,7 @@ function destroyWarheadsInBlasts(world: World): void {
   world.warheads = world.warheads.filter((w) => {
     const caught = world.blasts.some((b) => distance(b.center, w.pos) <= blastRadius(b.ageMs));
     if (caught) {
-      const base = w.smart ? SMART_BOMB.points : SCORE.warhead;
+      const base = w.smart ? SCORE.smartBomb : SCORE.warhead;
       const points = base * waveMultiplier(world.wave.number);
       world.score += points;
       world.events.push({ type: 'warheadDestroyed', at: w.pos, points });
