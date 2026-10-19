@@ -16,6 +16,9 @@ import { formatScore } from '../logic/scoring';
 import type { GameMode } from './GameScene';
 import { Backdrop, browserStore, centredText, onKeyPress } from './ui';
 
+/** Performance mark set once the title screen has drawn its first frame. */
+const TITLE_SHOWN = 'title-shown';
+
 /** The title screen: the name, the high score, how to play, and a blinking prompt to start. */
 export class TitleScene extends Phaser.Scene {
   private texts: Phaser.GameObjects.Text[] = [];
@@ -125,6 +128,8 @@ export class TitleScene extends Phaser.Scene {
   }
 
   override update(): void {
+    // The load-time check (scripts/load-time.mjs, M5.3) measures to the first drawn title.
+    if (performance.getEntriesByName(TITLE_SHOWN).length === 0) performance.mark(TITLE_SHOWN);
     const on = Math.floor(this.time.now / SCREENS.promptBlinkMs) % 2 === 0;
     this.prompt.setAlpha(on ? 1 : 0);
   }
