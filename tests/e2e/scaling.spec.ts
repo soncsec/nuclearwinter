@@ -7,7 +7,7 @@ async function openGame(page: import('@playwright/test').Page): Promise<void> {
   await page.goto('./');
   await expect
     .poll(() => page.evaluate(() => window.__game?.scene() ?? null), { timeout: 15_000 })
-    .toBe('Game');
+    .toBe('Title');
 }
 
 test('the canvas is a whole number of device pixels per game pixel and fits the window', async ({

@@ -13,7 +13,7 @@ test('every image and the font load from our own origin', async ({ page }) => {
   await page.goto('./');
   await expect
     .poll(() => page.evaluate(() => window.__game?.scene() ?? null), { timeout: 15_000 })
-    .toBe('Game');
+    .toBe('Title');
 
   const expected = [...Object.values(IMAGES), ...Object.values(SHEETS).map((s) => s.path)];
   for (const path of expected) expect([...loaded]).toContain(path);

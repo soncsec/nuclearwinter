@@ -103,12 +103,14 @@ src/
 │   ├── waves.ts       wave number → wave description
 │   └── scoring.ts     kill points, end-of-wave bonus, bonus cities, high score
 ├── entities/          pooled Phaser sprites that mirror logic state
-├── scenes/            Boot/Preload, Title, Game, Hud, GameOver: thin, call into logic/
-└── debug/testHook.ts  window.__game for Playwright (e2e build only)
+├── scenes/            Title and Game (HUD, pause, wave and game-over screens): thin, call into logic/
+│   └── ui.ts          backdrop, centred text and localStorage access shared by the scenes
+└── debug/             testHook.ts: window.__game for Playwright (e2e build only);
+                       DebugOverlay.ts: frame rate and counts (dev and e2e builds only)
 public/assets/         art copied from legacy/ (listed in CREDITS.md) and the font
 tests/
 ├── unit/              Vitest, 80% coverage floor on src/logic
-├── e2e/               Playwright in Chromium and Firefox: desktop and phone viewports, production CSP
+├── e2e/               Playwright in Chromium, Firefox and WebKit: desktop, phone and tablet viewports, production CSP
 └── release/           release scripts against a fake server
 scripts/               release.sh, release-remote.sh, smoke_test.py, zap_check.py, check_repo.py
 tools/docs-page/       builds the docs page from the four docs
@@ -122,7 +124,7 @@ tools/docs-page/       builds the docs page from the four docs
 
 ## 5. Delivery pipeline
 
-- **PR:** repo checks, gitleaks, `npm audit`, format, lint, typecheck, unit tests with coverage, release-script tests, build, Playwright (Chromium and Firefox), CodeQL.
+- **PR:** repo checks, gitleaks, `npm audit`, format, lint, typecheck, unit tests with coverage, release-script tests, build, Playwright (Chromium, Firefox and WebKit), CodeQL.
 - **Merge to `main`:** deploy to GitHub Pages staging, then the ZAP baseline scan.
 - **Release:** `scripts/release.sh deploy` from the dev machine (standing owner approval after each merge), with smoke test and automatic rollback.
 

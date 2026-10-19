@@ -1,0 +1,69 @@
+import Phaser from 'phaser';
+import { FONT_FAMILY } from '../assets/manifest';
+import { COLORS, DEBUG_OVERLAY, HUD } from '../config/tuning';
+import type { GameScene } from '../scenes/GameScene';
+
+/**
+ * Dev-only overlay (ROADMAP M2.7): frame rate and the simulation's counts, for tuning the
+ * waves and checking phones. It is imported only outside production builds (see main.ts),
+ * shows when the URL has ?debug, and the backquote key toggles it.
+ */
+export class DebugScene extends Phaser.Scene {
+  private text!: Phaser.GameObjects.Text;
+  private frameMs: number[] = [];
+  private shown = false;
+
+  constructor() {
+    super('Debug');
+  }
+
+  create(): void {
+    this.shown = new URLSearchParams(window.location.search).has(DEBUG_OVERLAY.queryParam);
+    this.text = this.add
+      .text(DEBUG_OVERLAY.x, DEBUG_OVERLAY.y, '', {
+        fontFamily: FONT_FAMILY,
+        fontSize: `${HUD.fontSizePx}px`,
+        color: COLORS.hud,
+        backgroundColor: '#000000',
+      })
+      .setAlpha(DEBUG_OVERLAY.alpha)
+      .setVisible(this.shown);
+    this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
+      if (e.key === DEBUG_OVERLAY.toggleKey && !e.repeat) this.toggle();
+    });
+  }
+
+  override update(_time: number, deltaMs: number): void {
+    this.frameMs.push(deltaMs);
+    if (this.frameMs.length > DEBUG_OVERLAY.sampleFrames) this.frameMs.shift();
+    if (!this.shown) return;
+    const avg = this.frameMs.reduce((a, b) => a + b, 0) / this.frameMs.length;
+    const worst = Math.max(...this.frameMs);
+    const lines = [`FPS ${Math.round(1000 / avg)}  WORST ${Math.round(1000 / worst)}`];
+    const game = this.game.scene.getScene('Game') as GameScene | null;
+    if (game && this.game.scene.isActive('Game')) {
+      const s = game.debugStats();
+      lines.push(
+        `WAVE ${s.wave}${s.paused ? ' PAUSED' : ''}  TO LAUNCH ${s.toLaunch}`,
+        `WARHEADS ${s.warheads}  MISSILES ${s.interceptors}  BLASTS ${s.blasts}`,
+        `FX ${s.effects}/${s.effectPool}`,
+      );
+    }
+    this.text.setText(lines);
+  }
+
+  toggle(): void {
+    this.shown = !this.shown;
+    this.text.setVisible(this.shown);
+  }
+
+  /** The lines on screen, or null while hidden (for the test hook). */
+  lines(): string[] | null {
+    return this.shown ? this.text.text.split('\n') : null;
+  }
+}
+
+/** Adds the overlay on top of every other scene and starts it. */
+export function installDebugOverlay(game: Phaser.Game): void {
+  game.scene.add('Debug', DebugScene, true);
+}
