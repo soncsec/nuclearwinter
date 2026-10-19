@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_WIDTH, HUD, SCREENS, SETTINGS, TITLE } from '../config/tuning';
 import { loadSettings, saveSettings, type Settings } from '../logic/settings';
-import { Backdrop, browserStore, centredText } from './ui';
+import { Backdrop, browserStore, centredText, onKeyPress } from './ui';
 
 interface Option {
   key: keyof Settings;
@@ -67,8 +67,7 @@ export class SettingsScene extends Phaser.Scene {
       if (index >= 0) this.toggle(index);
       else if (hit(SETTINGS.backY)) this.back();
     });
-    this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase();
+    onKeyPress(this, (key) => {
       const index = (SETTINGS.toggleKeys as readonly string[]).indexOf(key);
       if (index >= 0) this.toggle(index);
       else if ((SETTINGS.backKeys as readonly string[]).includes(key)) this.back();

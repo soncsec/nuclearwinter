@@ -14,7 +14,7 @@ import { loadDailyBest, utcDateKey } from '../logic/daily';
 import { loadHighScore } from '../logic/highScore';
 import { formatScore } from '../logic/scoring';
 import type { GameMode } from './GameScene';
-import { Backdrop, browserStore, centredText } from './ui';
+import { Backdrop, browserStore, centredText, onKeyPress } from './ui';
 
 /** The title screen: the name, the high score, how to play, and a blinking prompt to start. */
 export class TitleScene extends Phaser.Scene {
@@ -117,8 +117,7 @@ export class TitleScene extends Phaser.Scene {
       if (onSettings) this.openSettings();
       else this.startGame(onDaily ? 'daily' : 'normal');
     });
-    this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase();
+    onKeyPress(this, (key) => {
       if (key === DAILY_KEY) this.startGame('daily');
       else if (key === SETTINGS_KEY) this.openSettings();
       else if (CONFIRM_KEYS.includes(key)) this.startGame('normal');
