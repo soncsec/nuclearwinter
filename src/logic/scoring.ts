@@ -1,27 +1,49 @@
 import { SCORE } from '../config/tuning';
 
+/**
+ * The wave's score multiplier: 1 for the first `every` waves, then one more every `every`
+ * waves, never above `max`.
+ */
+export function waveMultiplier(
+  wave: number,
+  rule: { multiplierEvery: number; multiplierMax: number } = SCORE,
+): number {
+  const every = Math.max(1, Math.floor(rule.multiplierEvery));
+  const max = Math.max(1, Math.floor(rule.multiplierMax));
+  const n = Math.max(1, Math.floor(wave));
+  return Math.min(max, Math.floor((n - 1) / every) + 1);
+}
+
 /** The end-of-wave bonus, broken down for the tally screen. */
 export interface WaveBonus {
   readonly citiesSaved: number;
   readonly missilesLeft: number;
+  /** The wave multiplier already applied to the points below. */
+  readonly multiplier: number;
   readonly cityPoints: number;
   readonly missilePoints: number;
   readonly total: number;
 }
 
-/** Bonus for the cities still standing and the missiles left unused when a wave is cleared. */
+/**
+ * Bonus for the cities still standing and the missiles left unused when a wave is cleared,
+ * times the wave multiplier.
+ */
 export function waveBonus(
   citiesSaved: number,
   missilesLeft: number,
+  multiplier = 1,
   points: { citySaved: number; missileLeft: number } = SCORE,
 ): WaveBonus {
   const cities = Math.max(0, Math.floor(citiesSaved));
   const missiles = Math.max(0, Math.floor(missilesLeft));
-  const cityPoints = cities * points.citySaved;
-  const missilePoints = missiles * points.missileLeft;
+  const m = Math.max(1, Math.floor(multiplier));
+  const cityPoints = cities * points.citySaved * m;
+  const missilePoints = missiles * points.missileLeft * m;
   return {
     citiesSaved: cities,
     missilesLeft: missiles,
+    multiplier: m,
     cityPoints,
     missilePoints,
     total: cityPoints + missilePoints,

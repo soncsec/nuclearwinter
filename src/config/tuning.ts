@@ -160,6 +160,12 @@ export const SCORE = {
   citySaved: 100,
   /** A bonus city is earned every this many points (arcade value). */
   bonusCityEvery: 10_000,
+  /**
+   * Wave multiplier (arcade rule): every point is worth 1x on waves 1-2, 2x on waves 3-4, and
+   * one more every `multiplierEvery` waves, up to `multiplierMax`. Approved 2026-10-18.
+   */
+  multiplierEvery: 2,
+  multiplierMax: 6,
 } as const;
 
 /** Colours for shapes drawn in code (placeholders until the M4 art pass). */

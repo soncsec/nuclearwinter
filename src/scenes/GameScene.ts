@@ -23,7 +23,7 @@ import { blastRadius } from '../logic/blast';
 import type { Point } from '../logic/geometry';
 import { createRng, type Rng } from '../logic/rng';
 import { loadHighScore, saveHighScore } from '../logic/highScore';
-import { countUp, formatScore } from '../logic/scoring';
+import { countUp, formatScore, waveMultiplier } from '../logic/scoring';
 import {
   createWorld,
   drainEvents,
@@ -58,6 +58,8 @@ export interface GameSnapshot {
   paused: boolean;
   /** The wave being played, 1 for the first. */
   wave: number;
+  /** The wave's score multiplier. */
+  multiplier: number;
   /** The wave number as the HUD shows it. */
   hudWave: string;
   /** The "WAVE n" banner at the start of a wave, or null when hidden. */
@@ -342,6 +344,7 @@ export class GameScene extends Phaser.Scene {
       phase: w.phase,
       paused: this.paused,
       wave: w.wave.number,
+      multiplier: waveMultiplier(w.wave.number),
       hudWave: this.waveText.text,
       waveBanner: this.waveBanner.visible ? this.waveBanner.text : null,
       bannersShown: [...this.bannersShown],
@@ -391,7 +394,7 @@ export class GameScene extends Phaser.Scene {
           const b = e.bonus;
           this.showMessage(
             `WAVE ${e.number} CLEARED`,
-            `CITIES ${b.citiesSaved}  MISSILES ${b.missilesLeft}`,
+            `CITIES ${b.citiesSaved}  MISSILES ${b.missilesLeft}${b.multiplier > 1 ? `  ${b.multiplier}X` : ''}`,
             'BONUS 0',
             'FOR NEXT WAVE',
           );
@@ -530,6 +533,10 @@ export class GameScene extends Phaser.Scene {
     this.waveBanner.setText(label).setVisible(true);
     this.bannersShown.push(label);
     this.bannerUntil = this.time.now + SCREENS.waveBannerMs;
+    // Announce each step up in the multiplier.
+    const n = this.world.wave.number;
+    const m = waveMultiplier(n);
+    if (m > waveMultiplier(n - 1)) this.addToBanner(`${m}X POINTS`);
   }
 
   /** Adds a second line under the "WAVE n" banner that is showing. */

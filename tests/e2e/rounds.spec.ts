@@ -215,3 +215,43 @@ test('reaching 10,000 points rebuilds a lost city at the next wave', async ({ pa
   expect(snap.cities).toEqual([true, true, true, true, true, true]);
   expect(snap.bannersShown.at(-1)).toBe('WAVE 2\nBONUS CITY');
 });
+
+test('from wave 3 every point counts double, and the banner says so', async ({ page }, info) => {
+  await openGame(page, '?seed=7');
+  // Clear waves 1 and 2 with nothing launched: all six cities and 30 missiles each time.
+  for (const wave of [1, 2]) {
+    await page.evaluate(() => window.__game?.finishWave());
+    await expect
+      .poll(async () => (await snapshot(page)).phase, { timeout: 30_000 })
+      .toBe('waveCleared');
+    expect((await snapshot(page)).message[1]).toBe('CITIES 6  MISSILES 30');
+    await tapToRestart(page, info);
+    await expect.poll(async () => (await snapshot(page)).wave).toBe(wave + 1);
+  }
+  await expect
+    .poll(async () => (await snapshot(page)).bannersShown)
+    .toEqual(['WAVE 1', 'WAVE 2', 'WAVE 3\n2X POINTS']);
+  // Two clean waves at 1x: 2 x (6 x 100 + 30 x 5) = 1500.
+  const before = await snapshot(page);
+  expect(before.multiplier).toBe(2);
+  expect(before.score).toBe(1500);
+
+  // A kill on wave 3 is worth 2 x 25.
+  await page.evaluate(() => window.__game?.holdWave());
+  await page.evaluate(
+    (ground) => window.__game?.launchWarhead({ x: 120, y: 60 }, { x: 120, y: ground }, 1),
+    GROUND_Y,
+  );
+  await expect.poll(async () => (await snapshot(page)).warheads.length).toBe(1);
+  await tapGame(page, info, 120, 62);
+  await expect.poll(async () => (await snapshot(page)).score, { timeout: 30_000 }).toBe(1550);
+
+  // The wave's bonus is doubled too, and the tally says so.
+  await page.evaluate(() => window.__game?.finishWave());
+  await expect
+    .poll(async () => (await snapshot(page)).phase, { timeout: 30_000 })
+    .toBe('waveCleared');
+  await expect.poll(async () => (await snapshot(page)).message[2]).toBe('BONUS 1490');
+  expect((await snapshot(page)).message[1]).toBe('CITIES 6  MISSILES 29  2X');
+  expect((await snapshot(page)).score).toBe(1550 + 1490);
+});
