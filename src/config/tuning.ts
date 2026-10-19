@@ -433,6 +433,23 @@ export const GLOW = {
   ],
 } as const;
 
+/**
+ * City-hit flash (M4.3): a short warm wash over the screen when a city or base is destroyed.
+ * Never more than `maxPerSecond` flashes start in any second (photosensitive-safe limit).
+ */
+export const FLASH = {
+  color: 0xffd6aa,
+  peakAlpha: 0.32,
+  durationMs: 120,
+  maxPerSecond: 3,
+} as const;
+
+/** Screen shake (M4.3) when a city or base is destroyed: whole-pixel jolts that die away. */
+export const SHAKE = {
+  amplitude: 2,
+  durationMs: 250,
+} as const;
+
 const SPARK_COLORS = [0xffb347, 0xfff3d0, 0xff7a2a] as const;
 
 /** Spark particles (M4.2): one fixed pool, a burst for each kind of explosion. */
