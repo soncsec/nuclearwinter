@@ -7,7 +7,7 @@
 | Milestone | Status |
 |---|---|
 | M0 Setup | Done |
-| M1 Walking skeleton (one wave, released to production) | Done: owner played on PC and phone 2026-10-18 (phone frame rate still to record) |
+| M1 Walking skeleton (one wave, released to production) | Done: owner played on PC and phone 2026-10-18; phone frame rate 60 fps average, 54 worst (2026-10-19) |
 | M2 Core game | Done |
 | M3 Enemies | In progress |
 | M4 The Nuclear Winter look | Not started |
@@ -52,6 +52,8 @@
 - [x] M1.9 First production release with smoke test; ZAP and static check results reported
 
 **Acceptance criteria:** the owner plays one wave on staging and production, on desktop and on a phone; CI green; frame rate measured on a phone and recorded.
+
+**Recorded 2026-10-19:** the owner's phone, production build with `?debug`: **60 fps** average, **54 fps** worst frame over the last 120 frames. All met.
 
 ## M2 — Core game
 
