@@ -64,6 +64,40 @@ export const WARHEAD = {
 } as const;
 
 /**
+ * Bombers and satellites (M3.2): they cross the sky and drop warheads while over the play
+ * area. A blast that touches one destroys it. From `firstWave`, each wave sends
+ * `countBase` of them, one more every `countStepWaves` waves, up to `countMax`.
+ */
+export const RAIDERS = {
+  firstWave: 2,
+  countBase: 1,
+  countStepWaves: 2,
+  countMax: 4,
+  /** The first raider of a wave, then the gaps between them, in milliseconds. */
+  firstSpawnMs: 4000,
+  gapMinMs: 5000,
+  gapMaxMs: 9000,
+  /** Raiders start and leave this many pixels beyond the screen's edge. */
+  offscreen: 16,
+  /** Warheads are dropped only this far inside the screen's edges. */
+  dropMargin: 24,
+  dropGapMinMs: 1500,
+  dropGapMaxMs: 3000,
+  bomber: { yMin: 50, yMax: 80, speed: 28, drops: 3, hitRadius: 5, points: 100 },
+  /** From `firstWave`, each raider is a satellite with this chance. */
+  satellite: {
+    firstWave: 4,
+    chance: 0.4,
+    yMin: 24,
+    yMax: 44,
+    speed: 20,
+    drops: 2,
+    hitRadius: 4,
+    points: 100,
+  },
+} as const;
+
+/**
  * Splitting warheads (MIRVs, M3.1): from `firstWave`, each launched warhead may be one. It
  * looks like any other until it reaches its split row, then becomes 2 or 3 warheads aimed at
  * different targets. Shooting it down before the split stops all of them.
@@ -202,6 +236,9 @@ export const COLORS = {
   ammoOut: '#ff5a3c',
   messagePanel: 0x02121e,
   warheadTrail: 0xff5a3c,
+  bomber: 0xd0d6dc,
+  satellite: 0xc8b0ff,
+  satellitePanel: 0x5a7cff,
   warheadHead: 0xffffff,
   interceptorTrail: 0x7ff6ff,
   aimMarker: 0x7ff6ff,
@@ -232,6 +269,18 @@ export const SHAPES = {
   rubbleHeight: 2,
   baseHalfWidth: 12,
   baseHeight: 8,
+  /** Bomber: [x offset, y offset, width, height] rectangles, drawn facing right (mirrored left). */
+  bomber: [
+    [-5, -1, 10, 2],
+    [-1, -4, 3, 8],
+    [-5, -3, 2, 2],
+  ],
+  /** Satellite: a body with a panel on each side, as [x offset, y offset, width, height]. */
+  satelliteBody: [-2, -2, 4, 4],
+  satellitePanels: [
+    [-7, -1, 4, 2],
+    [3, -1, 4, 2],
+  ],
 } as const;
 
 /** Missiles left, drawn as pips in the ground strip under each base. */

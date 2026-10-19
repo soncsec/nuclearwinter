@@ -25,7 +25,7 @@ test('?debug shows the frame rate on the title and the counts during play', asyn
   const snap = await snapshot(page);
   expect(lines?.[1]).toBe(`WAVE 1  TO LAUNCH ${12 - snap.warheads.length}`);
   expect(lines?.[2]).toBe(`WARHEADS ${snap.warheads.length}  MISSILES 0  BLASTS 0`);
-  expect(lines?.[3]).toBe('FX 0/16');
+  expect(lines?.[3]).toBe('RAIDERS 0  FX 0/16');
 });
 
 test('the backquote key toggles the overlay on desktop', async ({ page }, info) => {

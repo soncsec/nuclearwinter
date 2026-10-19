@@ -462,7 +462,9 @@ describe('end-of-wave bonus', () => {
 describe('bonus cities', () => {
   /** Clears the current wave with the given score, then starts the next one. */
   function nextWaveWithScore(w: World, score: number): ReturnType<typeof drainEvents> {
+    // Nothing left to launch: no warheads, and from wave 2 no bombers or satellites either.
     w.wave.toLaunch = 0;
+    w.wave.raidersToLaunch = 0;
     run(w, createRng(1), STEP_MS * 2);
     expect(w.phase).toBe('waveCleared');
     w.score = score;

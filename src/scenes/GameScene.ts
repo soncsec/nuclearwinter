@@ -28,10 +28,12 @@ import {
   createWorld,
   drainEvents,
   fire,
+  launchRaider,
   launchWarhead,
   startNextWave,
   step,
   type Phase,
+  type RaiderKind,
   type World,
 } from '../logic/world';
 import { browserStore, drawBackdrop } from './ui';
@@ -43,6 +45,7 @@ export interface DebugStats {
   /** Warheads still to launch this wave. */
   toLaunch: number;
   warheads: number;
+  raiders: number;
   interceptors: number;
   blasts: number;
   /** Explosion sprites playing, and the pool's size. */
@@ -75,6 +78,10 @@ export interface GameSnapshot {
   /** Whether each base shows its "OUT" label. */
   outLabels: boolean[];
   warheads: Point[];
+  /** Bombers and satellites in the sky. */
+  raiders: { kind: RaiderKind; x: number; y: number }[];
+  /** Bombers and satellites shot down so far this game. */
+  raidersDestroyed: number;
   interceptors: number;
   blasts: number;
   /** The most recent counter-missile launch, or null before the first. */
@@ -109,6 +116,7 @@ export class GameScene extends Phaser.Scene {
   private effects!: EffectPool;
   private effectsPlayed = { impact: 0, cityHit: 0 };
   private splits = 0;
+  private raidersDestroyed = 0;
   private scoreText!: Phaser.GameObjects.Text;
   private highText!: Phaser.GameObjects.Text;
   /** The best score saved in this browser when this game started. */
@@ -171,6 +179,7 @@ export class GameScene extends Phaser.Scene {
     this.effects = new EffectPool(this, [IMPACT, CITY_HIT], EFFECTS.poolSize);
     this.effectsPlayed = { impact: 0, cityHit: 0 };
     this.splits = 0;
+    this.raidersDestroyed = 0;
 
     this.scoreText = this.add.text(HUD.margin, HUD.margin, '', {
       fontFamily: FONT_FAMILY,
@@ -306,6 +315,7 @@ export class GameScene extends Phaser.Scene {
    */
   testHoldWave(): void {
     this.world.wave.nextLaunchMs = Number.POSITIVE_INFINITY;
+    this.world.wave.nextRaiderMs = Number.POSITIVE_INFINITY;
   }
 
   /**
@@ -313,6 +323,12 @@ export class GameScene extends Phaser.Scene {
    */
   testFinishWave(): void {
     this.world.wave.toLaunch = 0;
+    this.world.wave.raidersToLaunch = 0;
+  }
+
+  /** For the test hook: sends a bomber or satellite across at row `y` (dir 1 flies right). */
+  testLaunchRaider(kind: RaiderKind, y: number, dir: 1 | -1): void {
+    launchRaider(this.world, kind, y, dir);
   }
 
   /** For the test hook: whether a tap would start a new game now. */
@@ -339,6 +355,7 @@ export class GameScene extends Phaser.Scene {
       paused: this.paused,
       toLaunch: w.wave.toLaunch,
       warheads: w.warheads.length,
+      raiders: w.raiders.length,
       interceptors: w.interceptors.length,
       blasts: w.blasts.length,
       effects: this.effects.activeCount,
@@ -364,6 +381,8 @@ export class GameScene extends Phaser.Scene {
       ammo: w.bases.map((b) => b.ammo),
       outLabels: this.outLabels.map((t) => t.visible),
       warheads: w.warheads.map((h) => ({ ...h.pos })),
+      raiders: w.raiders.map((r) => ({ kind: r.kind, x: r.pos.x, y: r.pos.y })),
+      raidersDestroyed: this.raidersDestroyed,
       interceptors: w.interceptors.length,
       blasts: w.blasts.length,
       lastShot: this.lastShot,
@@ -392,6 +411,11 @@ export class GameScene extends Phaser.Scene {
           break;
         case 'warheadSplit':
           this.splits++;
+          break;
+        case 'raiderDestroyed':
+          this.raidersDestroyed++;
+          this.updateScore();
+          this.playEffect(IMPACT, e.at);
           break;
         case 'cityDestroyed':
           this.playEffect(CITY_HIT, { x: this.world.cities[e.index]?.x ?? e.at.x, y: GROUND_Y });
@@ -607,11 +631,35 @@ export class GameScene extends Phaser.Scene {
       g.lineBetween(i.target.x - m, i.target.y - m, i.target.x + m, i.target.y + m);
       g.lineBetween(i.target.x - m, i.target.y + m, i.target.x + m, i.target.y - m);
     }
+    for (const r of this.world.raiders) this.drawRaider(g, r.kind, r.pos, r.dir);
     for (const b of this.world.blasts) {
       const r = blastRadius(b.ageMs);
       g.fillStyle(COLORS.blastOuter).fillCircle(b.center.x, b.center.y, r);
       g.fillStyle(COLORS.blastInner).fillCircle(b.center.x, b.center.y, r * TRAILS.blastCore);
     }
+  }
+
+  /** Placeholder shapes until the M4 art pass: a bomber facing its way, or a satellite. */
+  private drawRaider(
+    g: Phaser.GameObjects.Graphics,
+    kind: RaiderKind,
+    at: Point,
+    dir: 1 | -1,
+  ): void {
+    const x = Math.round(at.x);
+    const y = Math.round(at.y);
+    if (kind === 'bomber') {
+      g.fillStyle(COLORS.bomber);
+      for (const [dx, dy, w, h] of SHAPES.bomber) {
+        // Mirror for a bomber flying left: the tail stays behind it.
+        g.fillRect(dir === 1 ? x + dx : x - dx - w, y + dy, w, h);
+      }
+      return;
+    }
+    const [bx, by, bw, bh] = SHAPES.satelliteBody;
+    g.fillStyle(COLORS.satellitePanel);
+    for (const [dx, dy, w, h] of SHAPES.satellitePanels) g.fillRect(x + dx, y + dy, w, h);
+    g.fillStyle(COLORS.satellite).fillRect(x + bx, y + by, bw, bh);
   }
 
   /** Cities and bases: standing, or rubble once destroyed. */
