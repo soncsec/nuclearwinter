@@ -82,6 +82,7 @@ A complete, replayable game, live on the portal, playable on desktop, phone and 
 | 2026-10-18 | Portal releases for this game's card need no approval per release |
 | 2026-10-19 | The debug overlay is available in production with `?debug` (separate chunk, loaded only on request), so phones can be measured |
 | 2026-10-19 | From the product review: separate random streams (ADR-NW08), build number on the title, tuning session after the enemies, look mock-up before M4, one settings screen ("reduce flashing" also stops screen shake) |
+| 2026-10-19 | Look approved (M4.0, `docs/look/`): night sky with stars, darkened Synth City skyline, glowing trails and blasts, smoky sky and thick ash as cities fall, warm city-hit flash with a small shake; cities a bit darker than in the mock-up |
 
 ## 9. Open questions
 
