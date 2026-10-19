@@ -48,6 +48,8 @@ export interface TestHook {
   canRestart(): boolean;
   /** Changes how long taps are ignored after the wave ends, so tests don't race the clock. */
   setRestartDelay(ms: number): void;
+  /** Feeds frame times (ms each, for `totalMs` in all) to the bloom watchdog. */
+  feedFrames(frameMs: number, totalMs: number): void;
   /** Sets the score, e.g. to just below a bonus city. */
   setScore(score: number): void;
 }
@@ -87,6 +89,7 @@ export function installTestHook(game: Phaser.Game): void {
     canRestart: () => scene().testCanRestart(),
     setRestartDelay: (ms) => scene().testSetRestartDelay(ms),
     setScore: (score) => scene().testSetScore(score),
+    feedFrames: (frameMs, totalMs) => scene().testFeedFrames(frameMs, totalMs),
     scene: () => game.scene.getScenes(true)[0]?.scene.key ?? null,
     snapshot: () => {
       const s = game.scene.getScene('Game') as GameScene | null;
