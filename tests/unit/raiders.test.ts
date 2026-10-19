@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BLAST, GAME_WIDTH, RAIDERS, SCORE, STEP_MS } from '../../src/config/tuning';
 import { waveSpec } from '../../src/logic/waves';
 import { firstWaveWith } from './mix';
-import { createRng, type Rng } from '../../src/logic/rng';
+import { createStreams, type RandomStreams } from '../../src/logic/rng';
 import {
   createWorld,
   drainEvents,
@@ -20,7 +20,7 @@ function quietWorld(): World {
   return w;
 }
 
-function run(world: World, rng: Rng, ms: number): void {
+function run(world: World, rng: RandomStreams, ms: number): void {
   for (let t = 0; t < ms && world.phase === 'playing'; t += STEP_MS) step(world, rng, STEP_MS);
 }
 
@@ -29,7 +29,7 @@ describe('raiders per wave', () => {
     const w = createWorld();
     expect(w.wave.raidersToLaunch).toBe(0);
     w.wave.toLaunch = 0;
-    run(w, createRng(1), STEP_MS * 2);
+    run(w, createStreams(1), STEP_MS * 2);
     expect(w.phase).toBe('waveCleared');
     startNextWave(w);
     expect(w.wave.raidersToLaunch).toBe(waveSpec(2).raiders);
@@ -43,7 +43,7 @@ describe('raiders', () => {
     const r = launchRaider(w, 'bomber', 60, 1);
     expect(r.pos.x).toBe(-RAIDERS.offscreen);
     const crossMs = ((GAME_WIDTH + 2 * RAIDERS.offscreen) / RAIDERS.bomber.speed) * 1000;
-    const rng = createRng(4);
+    const rng = createStreams(4);
     let dropped = 0;
     for (let t = 0; t < crossMs + 1000; t += STEP_MS) {
       const before = w.warheads.length;
@@ -63,7 +63,7 @@ describe('raiders', () => {
   it('fly left when launched from the right', () => {
     const w = quietWorld();
     launchRaider(w, 'satellite', 30, -1);
-    run(w, createRng(1), 1000);
+    run(w, createStreams(1), 1000);
     const [s] = w.raiders;
     expect(s?.pos.x).toBeLessThan(GAME_WIDTH + RAIDERS.offscreen);
     expect(s?.pos.y).toBe(30);
@@ -77,7 +77,7 @@ describe('raiders', () => {
     // The blast's edge is just within the bomber's reach.
     const gap = BLAST.maxRadius + RAIDERS.bomber.hitRadius - 1;
     w.blasts.push({ id: 99, center: { x: 100 + gap, y: 60 }, ageMs: BLAST.growMs, kind: 'player' });
-    step(w, createRng(1), STEP_MS);
+    step(w, createStreams(1), STEP_MS);
     expect(w.raiders).toEqual([]);
     expect(w.score).toBe(SCORE.bomber * 2);
     expect(drainEvents(w)).toContainEqual(
@@ -92,7 +92,7 @@ describe('raiders', () => {
     r.pos = { x: 100, y: 30 };
     const gap = BLAST.maxRadius + RAIDERS.satellite.hitRadius + 3;
     w.blasts.push({ id: 99, center: { x: 100 + gap, y: 30 }, ageMs: BLAST.growMs, kind: 'player' });
-    step(w, createRng(1), STEP_MS);
+    step(w, createStreams(1), STEP_MS);
     expect(w.raiders).toHaveLength(1);
     expect(w.score).toBe(0);
   });
@@ -100,11 +100,11 @@ describe('raiders', () => {
   it('keep the wave open until they are gone', () => {
     const w = quietWorld();
     launchRaider(w, 'bomber', 60, 1);
-    run(w, createRng(1), 2000);
+    run(w, createStreams(1), 2000);
     expect(w.phase).toBe('playing');
     const crossMs = ((GAME_WIDTH + 2 * RAIDERS.offscreen) / RAIDERS.bomber.speed) * 1000;
     // Its dropped warheads must land or be shot down too; give them time to fall.
-    run(w, createRng(1), crossMs + 30_000);
+    run(w, createStreams(1), crossMs + 30_000);
     expect(w.raiders).toEqual([]);
     expect(['waveCleared', 'gameOver']).toContain(w.phase);
   });
@@ -120,7 +120,7 @@ describe('raiders', () => {
         raidersToLaunch: 50,
         nextRaiderMs: 0,
       };
-      const rng = createRng(9);
+      const rng = createStreams(9);
       const kinds: string[] = [];
       for (let i = 0; i < 50; i++) {
         w.wave.nextRaiderMs = w.timeMs;

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BLAST, GAME_WIDTH, GROUND_Y, SCORE, SMART_BOMB, STEP_MS } from '../../src/config/tuning';
 import { waveSpec } from '../../src/logic/waves';
 import { firstWaveWith } from './mix';
-import { createRng } from '../../src/logic/rng';
+import { createStreams } from '../../src/logic/rng';
 import {
   createWorld,
   drainEvents,
@@ -76,7 +76,7 @@ describe('smart bombs in the world', () => {
     const w = quietWorld();
     launchWarhead(w, { x: 120, y: 60 }, { x: 120, y: GROUND_Y }, 1, smart ? { smart } : {});
     fire(w, { x: shotX, y: 60 });
-    const rng = createRng(1);
+    const rng = createStreams(1);
     let kills = 0;
     for (let t = 0; t < 4000; t += STEP_MS) {
       step(w, rng, STEP_MS);
@@ -110,7 +110,7 @@ describe('smart bombs in the world', () => {
     w.wave = { ...w.wave, number: 3 };
     launchWarhead(w, { x: 192, y: 100 }, { x: 192, y: GROUND_Y }, 0.001, { smart: true });
     w.blasts.push({ id: 99, center: { x: 192, y: 100 }, ageMs: BLAST.growMs, kind: 'player' });
-    step(w, createRng(1), STEP_MS);
+    step(w, createStreams(1), STEP_MS);
     expect(w.score).toBe(SCORE.smartBomb * 2);
     expect(drainEvents(w)).toContainEqual(
       expect.objectContaining({ type: 'warheadDestroyed', points: SCORE.smartBomb * 2 }),
@@ -128,7 +128,7 @@ describe('smart bombs in the world', () => {
         nextLaunchMs: 0,
         raidersToLaunch: 0,
       };
-      const rng = createRng(13);
+      const rng = createStreams(13);
       let smart = 0;
       let both = 0;
       for (let i = 0; i < 6000 && w.wave.toLaunch > 0; i++) {

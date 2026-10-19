@@ -21,7 +21,7 @@ import {
 import { EffectPool, type EffectKind } from '../entities/EffectPool';
 import { blastRadius } from '../logic/blast';
 import type { Point } from '../logic/geometry';
-import { createRng, type Rng } from '../logic/rng';
+import { createStreams, type RandomStreams } from '../logic/rng';
 import { dailySeed, loadDailyBest, saveDailyBest, utcDateKey } from '../logic/daily';
 import { loadHighScore, saveHighScore } from '../logic/highScore';
 import { countUp, formatScore, waveMultiplier } from '../logic/scoring';
@@ -113,7 +113,8 @@ const CITY_HIT: EffectKind = { key: 'cityHit', frames: SHEETS.cityHit.frames, ..
 /** The game screen: draws the world from src/logic and passes input to it. */
 export class GameScene extends Phaser.Scene {
   private world!: World;
-  private rng!: Rng;
+  /** Gameplay and visual random streams from the seed (ADR-NW08). */
+  private rng!: RandomStreams;
   private seed = DEFAULT_SEED;
   private mode: GameMode = 'normal';
   /** The daily challenge's UTC date, fixed when the game starts so midnight can't split it. */
@@ -170,7 +171,7 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     this.seed = this.mode === 'daily' ? dailySeed(this.dateKey) : (seedFromUrl() ?? randomSeed());
-    this.rng = createRng(this.seed);
+    this.rng = createStreams(this.seed);
     this.world = createWorld();
     this.pendingMs = 0;
     this.lastShot = null;

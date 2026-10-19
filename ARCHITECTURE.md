@@ -92,9 +92,12 @@ No dependencies are added beyond the template's.
 ### ADR-NW08: Separate random streams for gameplay and visuals — *Accepted* (owner, 2026-10-18)
 
 - **Context:** A seed must replay a game exactly, and the daily challenge (M3.5) depends on it. If particles, ash or screen shake drew from the gameplay RNG, any visual change would alter the waves.
-- **Decision:** Two seeded generators. Gameplay (launches, targets, enemy choices) uses one, and only `src/logic/` advances it. Visual effects use a second, seeded from the same seed but never read by the rules.
+- **Decision:** Three seeded streams from the one seed (`createStreams` in `src/logic/rng.ts`, each seed mixed apart):
+  - `spawn`: the launch schedule (times, origins, speeds, enemy kinds, raiders). Every launch draws the same amount from it whatever the player does, so a seed, and so the daily challenge, always sends the same waves.
+  - `aim`: choices that depend on play (targets of MIRV warheads and bomber drops).
+  - `visual`: effects only; the rules never read it.
 - **Alternatives:** One generator for everything (visual tweaks change gameplay); `Math.random()` for visuals (unseeded, so screenshots and e2e runs differ).
-- **Tradeoffs:** Two generators to pass around. In return, the look can change freely without touching gameplay or the daily challenge.
+- **Tradeoffs:** Three streams to pass around. In return, the look can change freely without touching gameplay or the daily challenge.
 
 ## 3. Code structure
 
