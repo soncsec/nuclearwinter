@@ -75,6 +75,22 @@ export class Backdrop {
   }
 }
 
+/**
+ * Calls `handler` once per key press, with the key in lower case; held-key repeats are ignored.
+ * Phaser queues each browser key event and re-processes the whole queue whenever another event
+ * arrives, clearing it only once per frame. When a key's down and up land in the same frame (a
+ * slow machine), the keydown is dispatched twice, which would toggle a setting off and straight
+ * back on, or fire two shots. So each event is handled only the first time.
+ */
+export function onKeyPress(scene: Phaser.Scene, handler: (key: string) => void): void {
+  const seen = new WeakSet<KeyboardEvent>();
+  scene.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
+    if (seen.has(e) || e.repeat) return;
+    seen.add(e);
+    handler(e.key.toLowerCase());
+  });
+}
+
 /** A line of centred pixel-font text with its top edge at `y`. */
 export function centredText(
   scene: Phaser.Scene,

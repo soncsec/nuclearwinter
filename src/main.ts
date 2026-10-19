@@ -4,6 +4,7 @@ import { DEBUG_OVERLAY, GAME_HEIGHT, GAME_WIDTH } from './config/tuning';
 import { deviceZoom } from './logic/scaling';
 import { FONT_FAMILY } from './assets/manifest';
 import { GameScene } from './scenes/GameScene';
+import { SettingsScene } from './scenes/SettingsScene';
 import { TitleScene } from './scenes/TitleScene';
 
 // Whole-number zoom in device pixels, given to Phaser in CSS pixels (ADR-NW02).
@@ -32,7 +33,7 @@ export const game = new Phaser.Game({
     mode: Phaser.Scale.NONE,
     zoom: zoomForWindow(),
   },
-  scene: [TitleScene, GameScene],
+  scene: [TitleScene, SettingsScene, GameScene],
 });
 
 window.addEventListener('resize', () => {
