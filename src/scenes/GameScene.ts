@@ -8,6 +8,7 @@ import {
   DEFAULT_SEED,
   ASH,
   EFFECTS,
+  VIBRATION,
   GLOOM,
   FLASH,
   SHAKE,
@@ -32,6 +33,7 @@ import type { Point } from '../logic/geometry';
 import { createStreams, deriveSeed, type RandomStreams } from '../logic/rng';
 import { litWindows, type CityWindow } from '../logic/scenery';
 import { loadSettings, type Settings } from '../logic/settings';
+import { vibrate } from '../logic/haptics';
 import { easeToward, gloomTarget } from '../logic/gloom';
 import { ashAlpha, createAsh, stepAsh, visibleFlakes, type Flake } from '../logic/ash';
 import {
@@ -137,6 +139,8 @@ export interface GameSnapshot {
   /** City-hit flashes and screen shakes started this game. */
   flashes: number;
   shakes: number;
+  /** Phone vibrations asked for this game (M4.8). */
+  vibrations: number;
   /** Nuclear winter: 0 with every city standing, 1 with all lost (M4.4), and flakes showing. */
   gloom: number;
   ashFlakes: number;
@@ -177,6 +181,7 @@ export class GameScene extends Phaser.Scene {
   private shakeStartedAt: number | null = null;
   private flashes = 0;
   private shakes = 0;
+  private vibrations = 0;
   /** Real time not yet simulated; the world advances in fixed steps (ADR-NW03). */
   private pendingMs = 0;
   private lastShot: GameSnapshot['lastShot'] = null;
@@ -269,6 +274,7 @@ export class GameScene extends Phaser.Scene {
     this.shakeStartedAt = null;
     this.flashes = 0;
     this.shakes = 0;
+    this.vibrations = 0;
     this.effects = new EffectPool(this, [IMPACT, CITY_HIT], EFFECTS.poolSize);
     this.effectsPlayed = { impact: 0, cityHit: 0 };
     this.splits = 0;
@@ -508,6 +514,7 @@ export class GameScene extends Phaser.Scene {
       sparkBursts: this.sparkBursts,
       flashes: this.flashes,
       shakes: this.shakes,
+      vibrations: this.vibrations,
       gloom: this.gloom,
       ashFlakes: visibleFlakes(this.gloom),
       splits: this.splits,
@@ -848,10 +855,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * A city or base was destroyed: shake the screen, and flash it if the safe limit allows,
-   * unless the player chose "reduce flashing".
+   * A city or base was destroyed: vibrate the phone, shake the screen, and flash it if the
+   * safe limit allows, each unless the player turned it off.
    */
   private hitFeedback(): void {
+    // Vibration has its own setting, separate from "reduce flashing" (M4.8).
+    if (vibrate(navigator, this.settings, VIBRATION.cityHit)) this.vibrations++;
     // "Reduce flashing" turns off both the flash and the shake (M4.5).
     if (this.settings.reduceFlashing) return;
     const now = this.time.now;

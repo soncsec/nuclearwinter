@@ -98,7 +98,7 @@
 - [x] M4.5 Settings screen: "reduce flashing" (also turns off screen shake) and vibration, saved in localStorage; mute joins it in M6
 - [x] M4.6 Press Start 2P HUD and screens (every text uses it at 8 or 16 px; loaded before the first screen)
 - [ ] M4.7 Optional bloom filter, switched off automatically when the frame rate drops (ADR-NW04)
-- [ ] M4.8 Phone vibration on city hits (Vibration API where supported), with a setting
+- [x] M4.8 Phone vibration on city hits (Vibration API where supported), with a setting
 
 **Acceptance criteria:** owner approves the look on staging; 60 fps on a laptop; no flash exceeds three per second.
 
