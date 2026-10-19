@@ -42,3 +42,35 @@ export function createRng(seed: number): Rng {
     },
   };
 }
+
+/**
+ * The game's random streams (ADR-NW08), all from one seed but independent of each other:
+ * - `spawn`: the launch schedule (when, where from, how fast, which enemy). Every launch draws
+ *   the same amount from it whatever the player does, so a seed (and the daily challenge)
+ *   always sends the same waves.
+ * - `aim`: choices that depend on how the game is going (targets of MIRV warheads and bomber
+ *   drops). Only the rules in `src/logic/` use these two.
+ * - `visual`: effects such as particles and screen shake. The rules never read it, so the look
+ *   can change without changing the game.
+ */
+export interface RandomStreams {
+  readonly spawn: Rng;
+  readonly aim: Rng;
+  readonly visual: Rng;
+}
+
+export function createStreams(seed: number): RandomStreams {
+  return {
+    spawn: createRng(deriveSeed(seed, 1)),
+    aim: createRng(deriveSeed(seed, 2)),
+    visual: createRng(deriveSeed(seed, 3)),
+  };
+}
+
+/** A well-mixed seed for stream `salt`, so the streams share no sequence (murmur3 finaliser). */
+export function deriveSeed(seed: number, salt: number): number {
+  let h = (seed ^ Math.imul(salt, 0x9e3779b9)) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35) >>> 0;
+  return (h ^ (h >>> 16)) >>> 0;
+}
