@@ -7,8 +7,11 @@ import {
   CONFIRM_KEYS,
   DEFAULT_SEED,
   EFFECTS,
+  FLASH,
+  SHAKE,
   GLOW,
   PARTICLES,
+  GAME_HEIGHT,
   GAME_WIDTH,
   GROUND_Y,
   HUD,
@@ -26,6 +29,13 @@ import { blastRadius } from '../logic/blast';
 import type { Point } from '../logic/geometry';
 import { createStreams, deriveSeed, type RandomStreams } from '../logic/rng';
 import { litWindows, type CityWindow } from '../logic/scenery';
+import {
+  createFlashLimiter,
+  flashAlpha,
+  shakeOffset,
+  tryFlash,
+  type FlashLimiter,
+} from '../logic/flash';
 import {
   burst,
   createParticlePool,
@@ -119,6 +129,9 @@ export interface GameSnapshot {
   /** Spark particles alive now, and bursts started this game. */
   sparks: number;
   sparkBursts: number;
+  /** City-hit flashes and screen shakes started this game. */
+  flashes: number;
+  shakes: number;
   /** Lines of the paused, wave-cleared or game-over message, empty while playing. */
   message: string[];
 }
@@ -143,6 +156,13 @@ export class GameScene extends Phaser.Scene {
   private glow!: Phaser.GameObjects.Graphics;
   private sparks!: ParticlePool;
   private sparkBursts = 0;
+  /** Full-screen flash over everything, and when the current flash and shake began. */
+  private flashRect!: Phaser.GameObjects.Rectangle;
+  private flashLimiter!: FlashLimiter;
+  private flashStartedAt: number | null = null;
+  private shakeStartedAt: number | null = null;
+  private flashes = 0;
+  private shakes = 0;
   /** Real time not yet simulated; the world advances in fixed steps (ADR-NW03). */
   private pendingMs = 0;
   private lastShot: GameSnapshot['lastShot'] = null;
@@ -226,11 +246,23 @@ export class GameScene extends Phaser.Scene {
     this.fx = this.add.graphics();
     this.sparks = createParticlePool(PARTICLES.poolSize);
     this.sparkBursts = 0;
+    this.flashLimiter = createFlashLimiter(FLASH.maxPerSecond, 1000);
+    this.flashStartedAt = null;
+    this.shakeStartedAt = null;
+    this.flashes = 0;
+    this.shakes = 0;
     this.effects = new EffectPool(this, [IMPACT, CITY_HIT], EFFECTS.poolSize);
     this.effectsPlayed = { impact: 0, cityHit: 0 };
     this.splits = 0;
     this.raidersDestroyed = 0;
 
+    // Over the scene, under the HUD, so the score stays readable through a flash.
+    this.flashRect = this.add
+      .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, FLASH.color)
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setVisible(false);
     this.scoreText = this.add.text(HUD.margin, HUD.margin, '', {
       fontFamily: FONT_FAMILY,
       fontSize: `${HUD.fontSizePx}px`,
@@ -343,6 +375,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.handleEvents();
     this.drawMoving();
+    this.updateFlashAndShake();
     this.blinkPrompt();
     this.updateTally();
     if (this.waveBanner.visible && this.time.now >= this.bannerUntil) {
@@ -459,6 +492,8 @@ export class GameScene extends Phaser.Scene {
       effectsPlayed: { ...this.effectsPlayed },
       sparks: liveCount(this.sparks),
       sparkBursts: this.sparkBursts,
+      flashes: this.flashes,
+      shakes: this.shakes,
       splits: this.splits,
       message: this.messageLines.filter((t) => t.visible).map((t) => t.text),
     };
@@ -495,6 +530,7 @@ export class GameScene extends Phaser.Scene {
             { x: this.world.cities[e.index]?.x ?? e.at.x, y: GROUND_Y - 1 },
             PARTICLES.city,
           );
+          this.hitFeedback();
           defensesChanged = true;
           break;
         case 'baseDestroyed':
@@ -503,6 +539,7 @@ export class GameScene extends Phaser.Scene {
             { x: this.world.bases[e.index]?.x ?? e.at.x, y: GROUND_Y - 1 },
             PARTICLES.city,
           );
+          this.hitFeedback();
           defensesChanged = true;
           break;
         case 'waveCleared': {
@@ -768,6 +805,36 @@ export class GameScene extends Phaser.Scene {
       if (!p.alive) continue;
       g.fillStyle(p.color, particleFade(p)).fillRect(Math.round(p.x), Math.round(p.y), 1, 1);
     }
+  }
+
+  /** A city or base was destroyed: shake the screen, and flash it if the safe limit allows. */
+  private hitFeedback(): void {
+    const now = this.time.now;
+    this.shakeStartedAt = now;
+    this.shakes++;
+    if (tryFlash(this.flashLimiter, now)) {
+      this.flashStartedAt = now;
+      this.flashes++;
+    }
+  }
+
+  private updateFlashAndShake(): void {
+    const now = this.time.now;
+    const alpha =
+      this.flashStartedAt === null
+        ? 0
+        : flashAlpha(now - this.flashStartedAt, FLASH.durationMs, FLASH.peakAlpha);
+    this.flashRect.setVisible(alpha > 0).setAlpha(alpha);
+    const offset =
+      this.shakeStartedAt === null
+        ? { x: 0, y: 0 }
+        : shakeOffset(
+            now - this.shakeStartedAt,
+            SHAKE.durationMs,
+            SHAKE.amplitude,
+            this.rng.visual,
+          );
+    this.cameras.main.setScroll(offset.x, offset.y);
   }
 
   private sparkBurst(at: Point, spec: BurstSpec): void {
