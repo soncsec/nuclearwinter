@@ -117,3 +117,10 @@ test('the pause button does nothing between waves or after game over', async ({ 
   expect(snap.paused).toBe(false);
   expect(snap.message[0]).toBe('GAME OVER');
 });
+
+test('the title shows the build number, the commit the build came from', async ({ page }) => {
+  await openTitle(page);
+  const lines = await titleLines(page);
+  // The e2e build is made from a git checkout, so it carries a real commit id, not "dev".
+  expect(lines[lines.length - 1]).toMatch(/^BUILD [0-9a-f]{8}$/);
+});

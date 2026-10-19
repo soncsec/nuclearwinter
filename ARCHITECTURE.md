@@ -131,6 +131,7 @@ tools/docs-page/       builds the docs page from the four docs
 - All gameplay numbers in `tuning.ts`; seeded RNG for anything random; object pools for missiles, blasts and particles.
 - E2E tests drive the game through the test hook and the gameplay clock, not wall-clock waits.
 - The canvas is checked to be scaled by a whole number on desktop and phone viewports.
+- The npm build scripts set `VITE_BUILD` to the commit's first 8 hex digits; the title screen shows it as the build number, matching the end of the release id. It is the only `VITE_` variable, so nothing else from the environment reaches the bundle.
 
 ## 5. Delivery pipeline
 

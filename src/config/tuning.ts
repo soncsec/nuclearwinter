@@ -275,6 +275,7 @@ export const COLORS = {
   hud: '#f2e9dc',
   title: '#7ff6ff',
   dailyButton: 0x7ff6ff,
+  buildText: '#6b7f8c',
   pauseIcon: 0xf2e9dc,
   ammoPip: 0x7ff6ff,
   ammoOut: '#ff5a3c',
@@ -416,6 +417,8 @@ export const TITLE = {
   promptY: 148,
   /** The daily challenge button: its row, and how far above and below it a tap still counts. */
   dailyY: 170,
+  /** The build number, small and dim in the ground strip at the bottom right. */
+  buildY: 206,
   dailyTapHalfHeight: 10,
   dailyPanelWidth: 260,
   dailyPanelHeight: 16,
