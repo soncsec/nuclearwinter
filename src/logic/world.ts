@@ -11,7 +11,7 @@ import {
 import { blastDurationMs, blastRadius } from './blast';
 import { clamp, distance, moveToward, type Point } from './geometry';
 import type { Rng } from './rng';
-import { bonusCitiesEarned, waveBonus, type WaveBonus } from './scoring';
+import { bonusCitiesEarned, waveBonus, waveMultiplier, type WaveBonus } from './scoring';
 import { waveSpec } from './waves';
 
 /**
@@ -316,8 +316,9 @@ function destroyWarheadsInBlasts(world: World): void {
   world.warheads = world.warheads.filter((w) => {
     const caught = world.blasts.some((b) => distance(b.center, w.pos) <= blastRadius(b.ageMs));
     if (caught) {
-      world.score += SCORE.warhead;
-      world.events.push({ type: 'warheadDestroyed', at: w.pos, points: SCORE.warhead });
+      const points = SCORE.warhead * waveMultiplier(world.wave.number);
+      world.score += points;
+      world.events.push({ type: 'warheadDestroyed', at: w.pos, points });
       addBlast(world, w.pos, 'chain');
     }
     return !caught;
@@ -339,6 +340,7 @@ function updatePhase(world: World): void {
     const bonus = waveBonus(
       world.cities.filter((c) => c.alive).length,
       world.bases.reduce((sum, b) => sum + (b.alive ? b.ammo : 0), 0),
+      waveMultiplier(world.wave.number),
     );
     world.score += bonus.total;
     world.phase = 'waveCleared';

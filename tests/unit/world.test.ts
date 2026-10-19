@@ -187,6 +187,18 @@ describe('blasts and warheads', () => {
     expect(w.blasts.filter((b) => b.kind === 'chain')).toHaveLength(1);
   });
 
+  it('a kill is worth more on later waves (3x on wave 5)', () => {
+    const w = quietWorld();
+    w.wave = { ...w.wave, number: 5 };
+    launchWarhead(w, { x: 192, y: 100 }, { x: 192, y: GROUND_Y }, 0.001);
+    w.blasts.push({ id: 99, center: { x: 192, y: 105 }, ageMs: BLAST.growMs, kind: 'player' });
+    step(w, createRng(1), STEP_MS);
+    expect(w.score).toBe(3 * SCORE.warhead);
+    expect(drainEvents(w)).toContainEqual(
+      expect.objectContaining({ type: 'warheadDestroyed', points: 3 * SCORE.warhead }),
+    );
+  });
+
   it('a warhead outside every blast survives', () => {
     const w = quietWorld();
     launchWarhead(w, { x: 50, y: 50 }, { x: 50, y: GROUND_Y }, 0.001);
@@ -414,6 +426,7 @@ describe('end-of-wave bonus', () => {
       bonus: {
         citiesSaved: 4,
         missilesLeft: 3,
+        multiplier: 1,
         cityPoints: 4 * SCORE.citySaved,
         missilePoints: 3 * SCORE.missileLeft,
         total: expected,
@@ -426,6 +439,13 @@ describe('end-of-wave bonus', () => {
     w.score = 250;
     run(w, createRng(1), STEP_MS * 2);
     expect(w.score).toBe(250 + 6 * SCORE.citySaved + 3 * BASES.ammo * SCORE.missileLeft);
+  });
+
+  it('is multiplied on later waves (2x on wave 3)', () => {
+    const w = quietWorld();
+    w.wave = { ...w.wave, number: 3 };
+    run(w, createRng(1), STEP_MS * 2);
+    expect(w.score).toBe(2 * (6 * SCORE.citySaved + 3 * BASES.ammo * SCORE.missileLeft));
   });
 
   it('pays nothing when the game is lost', () => {
