@@ -5,7 +5,7 @@ import { loadDailyBest, utcDateKey } from '../logic/daily';
 import { loadHighScore } from '../logic/highScore';
 import { formatScore } from '../logic/scoring';
 import type { GameMode } from './GameScene';
-import { browserStore, centredText, drawBackdrop } from './ui';
+import { Backdrop, browserStore, centredText } from './ui';
 
 /** The title screen: the name, the high score, how to play, and a blinking prompt to start. */
 export class TitleScene extends Phaser.Scene {
@@ -29,7 +29,7 @@ export class TitleScene extends Phaser.Scene {
 
   create(): void {
     this.started = false;
-    drawBackdrop(this);
+    new Backdrop(this);
     const touch = this.sys.game.device.input.touch;
     const tap = touch ? 'TAP' : 'CLICK';
     const best = formatScore(loadHighScore(browserStore()), HUD.scoreDigits);

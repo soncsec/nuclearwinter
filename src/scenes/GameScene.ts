@@ -6,7 +6,9 @@ import {
   COLORS,
   CONFIRM_KEYS,
   DEFAULT_SEED,
+  ASH,
   EFFECTS,
+  GLOOM,
   FLASH,
   SHAKE,
   GLOW,
@@ -29,6 +31,8 @@ import { blastRadius } from '../logic/blast';
 import type { Point } from '../logic/geometry';
 import { createStreams, deriveSeed, type RandomStreams } from '../logic/rng';
 import { litWindows, type CityWindow } from '../logic/scenery';
+import { easeToward, gloomTarget } from '../logic/gloom';
+import { ashAlpha, createAsh, stepAsh, visibleFlakes, type Flake } from '../logic/ash';
 import {
   createFlashLimiter,
   flashAlpha,
@@ -60,7 +64,7 @@ import {
   type RaiderKind,
   type World,
 } from '../logic/world';
-import { browserStore, drawBackdrop } from './ui';
+import { Backdrop, browserStore } from './ui';
 
 /** Cheap counts for the dev debug overlay, read every frame. */
 export interface DebugStats {
@@ -132,6 +136,9 @@ export interface GameSnapshot {
   /** City-hit flashes and screen shakes started this game. */
   flashes: number;
   shakes: number;
+  /** Nuclear winter: 0 with every city standing, 1 with all lost (M4.4), and flakes showing. */
+  gloom: number;
+  ashFlakes: number;
   /** Lines of the paused, wave-cleared or game-over message, empty while playing. */
   message: string[];
 }
@@ -156,6 +163,10 @@ export class GameScene extends Phaser.Scene {
   private glow!: Phaser.GameObjects.Graphics;
   private sparks!: ParticlePool;
   private sparkBursts = 0;
+  private backdrop!: Backdrop;
+  private gloom = 0;
+  private ash: Flake[] = [];
+  private ashLayer!: Phaser.GameObjects.Graphics;
   /** Full-screen flash over everything, and when the current flash and shake began. */
   private flashRect!: Phaser.GameObjects.Rectangle;
   private flashLimiter!: FlashLimiter;
@@ -219,7 +230,8 @@ export class GameScene extends Phaser.Scene {
     this.lastShot = null;
 
     this.paused = false;
-    drawBackdrop(this);
+    this.backdrop = new Backdrop(this);
+    this.gloom = 0;
 
     this.defenses = this.add.graphics();
     this.cityWindows = this.world.cities.map((_, i) =>
@@ -245,6 +257,8 @@ export class GameScene extends Phaser.Scene {
     this.glow = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
     this.fx = this.add.graphics();
     this.sparks = createParticlePool(PARTICLES.poolSize);
+    this.ash = createAsh(ASH.poolSize, this.rng.visual, GAME_WIDTH, GROUND_Y);
+    this.ashLayer = this.add.graphics();
     this.sparkBursts = 0;
     this.flashLimiter = createFlashLimiter(FLASH.maxPerSecond, 1000);
     this.flashStartedAt = null;
@@ -372,9 +386,11 @@ export class GameScene extends Phaser.Scene {
       // After a long stall, drop the backlog instead of fast-forwarding through it.
       if (steps === MAX_STEPS_PER_FRAME) this.pendingMs = 0;
       stepParticles(this.sparks, deltaMs, PARTICLES.gravity);
+      this.updateWinter(deltaMs);
     }
     this.handleEvents();
     this.drawMoving();
+    this.drawAsh();
     this.updateFlashAndShake();
     this.blinkPrompt();
     this.updateTally();
@@ -494,6 +510,8 @@ export class GameScene extends Phaser.Scene {
       sparkBursts: this.sparkBursts,
       flashes: this.flashes,
       shakes: this.shakes,
+      gloom: this.gloom,
+      ashFlakes: visibleFlakes(this.gloom),
       splits: this.splits,
       message: this.messageLines.filter((t) => t.visible).map((t) => t.text),
     };
@@ -804,6 +822,30 @@ export class GameScene extends Phaser.Scene {
     for (const p of this.sparks.particles) {
       if (!p.alive) continue;
       g.fillStyle(p.color, particleFade(p)).fillRect(Math.round(p.x), Math.round(p.y), 1, 1);
+    }
+  }
+
+  /** The sky darkens and the ash thickens as cities are lost; both ease in gradually. */
+  private updateWinter(deltaMs: number): void {
+    const cities = this.world.cities;
+    const target = gloomTarget(cities.filter((c) => !c.alive).length, cities.length);
+    this.gloom = easeToward(this.gloom, target, deltaMs, GLOOM.easePerSecond);
+    this.backdrop.setGloom(this.gloom);
+    stepAsh(this.ash, deltaMs, this.rng.visual, GAME_WIDTH, GROUND_Y);
+  }
+
+  private drawAsh(): void {
+    const g = this.ashLayer.clear();
+    const alpha = ashAlpha(this.gloom);
+    const n = visibleFlakes(this.gloom);
+    for (let i = 0; i < n; i++) {
+      const f = this.ash[i];
+      if (!f) break;
+      const x = Math.floor(f.x);
+      const y = Math.floor(f.y);
+      g.fillStyle(f.color, alpha);
+      if (f.size === 3) g.fillRect(x, y, 2, 2);
+      else g.fillRect(x, y, f.size, 1);
     }
   }
 

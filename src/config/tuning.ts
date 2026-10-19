@@ -19,6 +19,44 @@ export const SKY = {
   skylineTint: 0x56606e,
 } as const;
 
+/**
+ * Nuclear winter (M4.4): the sky as cities are lost, from the approved mock-up. Gloom runs from
+ * 0 (all cities standing) to 1 (all lost); the colours below are the look at full gloom.
+ */
+export const GLOOM = {
+  /** How fast gloom moves toward its target, per second (one city is 1/6). */
+  easePerSecond: 0.25,
+  top: 0x0e0b0c,
+  horizon: 0x46281a,
+  skylineTint: 0x3a2c26,
+  /** The colours are fully changed at this gloom (3 of 6 cities lost is 0.5). */
+  fullAt: 0.625,
+  /** Stars are gone at this gloom. */
+  starsGoneAt: 0.45,
+  /** Orange glow of burning cities along the horizon, strongest at full gloom. */
+  emberColor: 0xff6e28,
+  emberMaxAlpha: 0.45,
+  emberHeight: 70,
+} as const;
+
+/** Falling ash (M4.4): a fixed pool of flakes; more show, and more solidly, as gloom rises. */
+export const ASH = {
+  poolSize: 480,
+  minFlakes: 30,
+  maxFlakes: 480,
+  alphaMin: 0.35,
+  alphaMax: 0.95,
+  /** Pixels per second: down, and sideways (positive is right). */
+  fallMin: 6,
+  fallMax: 14,
+  driftMin: -3,
+  driftMax: 5,
+  /** Chance a flake is a 2×2 clump, or two pixels wide; the rest are single pixels. */
+  clumpChance: 0.2,
+  wideChance: 0.35,
+  colors: [0x8c847a, 0x9c9488, 0xaaa294],
+} as const;
+
 /** Fixed star field: the same stars in every game. */
 export const STARS = {
   seed: 7,
