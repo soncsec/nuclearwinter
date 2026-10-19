@@ -417,6 +417,75 @@ export const EFFECTS = {
   cityHit: { frameRate: 12, originY: 1 },
 } as const;
 
+/**
+ * Glow (M4.2, ADR-NW04): soft halos drawn with additive blending under the sharp trails and
+ * blasts. Each halo is a wider line, or a bigger circle, at low alpha.
+ */
+export const GLOW = {
+  trailHalos: [
+    { width: 5, alpha: 0.1 },
+    { width: 3, alpha: 0.22 },
+  ],
+  blastHalos: [
+    { scale: 1.7, alpha: 0.05 },
+    { scale: 1.45, alpha: 0.09 },
+    { scale: 1.2, alpha: 0.16 },
+  ],
+} as const;
+
+const SPARK_COLORS = [0xffb347, 0xfff3d0, 0xff7a2a] as const;
+
+/** Spark particles (M4.2): one fixed pool, a burst for each kind of explosion. */
+export const PARTICLES = {
+  poolSize: 256,
+  /** Pull on falling sparks, pixels per second squared. */
+  gravity: 70,
+  /** A warhead or smart bomb destroyed in the air: sparks in every direction. */
+  kill: {
+    count: 10,
+    speedMin: 20,
+    speedMax: 60,
+    lifeMin: 300,
+    lifeMax: 700,
+    angleMin: -Math.PI,
+    angleMax: Math.PI,
+    colors: SPARK_COLORS,
+  },
+  /** A warhead hitting open ground: sparks thrown upwards. */
+  impact: {
+    count: 12,
+    speedMin: 30,
+    speedMax: 80,
+    lifeMin: 300,
+    lifeMax: 800,
+    angleMin: -Math.PI,
+    angleMax: 0,
+    colors: [0xff7a2a, 0xffb347, 0x8a7a5a],
+  },
+  /** A city or base destroyed: a bigger, longer shower. */
+  city: {
+    count: 28,
+    speedMin: 30,
+    speedMax: 110,
+    lifeMin: 500,
+    lifeMax: 1300,
+    angleMin: -Math.PI,
+    angleMax: 0,
+    colors: [0xff5a1e, 0xffb347, 0xfff3d0],
+  },
+  /** A bomber or satellite shot down. */
+  raider: {
+    count: 18,
+    speedMin: 25,
+    speedMax: 75,
+    lifeMin: 400,
+    lifeMax: 900,
+    angleMin: -Math.PI,
+    angleMax: Math.PI,
+    colors: [0xd0d6dc, 0xffb347, 0xfff3d0],
+  },
+} as const;
+
 /** The wave-cleared and game-over messages. */
 export const SCREENS = {
   /** Taps are ignored for this long after the message appears, so a late shot can't skip it. */

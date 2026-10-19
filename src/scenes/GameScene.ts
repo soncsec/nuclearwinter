@@ -7,6 +7,8 @@ import {
   CONFIRM_KEYS,
   DEFAULT_SEED,
   EFFECTS,
+  GLOW,
+  PARTICLES,
   GAME_WIDTH,
   GROUND_Y,
   HUD,
@@ -24,6 +26,15 @@ import { blastRadius } from '../logic/blast';
 import type { Point } from '../logic/geometry';
 import { createStreams, deriveSeed, type RandomStreams } from '../logic/rng';
 import { litWindows, type CityWindow } from '../logic/scenery';
+import {
+  burst,
+  createParticlePool,
+  liveCount,
+  particleFade,
+  stepParticles,
+  type BurstSpec,
+  type ParticlePool,
+} from '../logic/particles';
 import { dailySeed, loadDailyBest, saveDailyBest, utcDateKey } from '../logic/daily';
 import { loadHighScore, saveHighScore } from '../logic/highScore';
 import { countUp, formatScore, waveMultiplier } from '../logic/scoring';
@@ -105,6 +116,9 @@ export interface GameSnapshot {
   splits: number;
   /** Explosion sprites started so far, by kind. */
   effectsPlayed: { impact: number; cityHit: number };
+  /** Spark particles alive now, and bursts started this game. */
+  sparks: number;
+  sparkBursts: number;
   /** Lines of the paused, wave-cleared or game-over message, empty while playing. */
   message: string[];
 }
@@ -125,6 +139,10 @@ export class GameScene extends Phaser.Scene {
   /** Lit windows of each city, fixed for every game. */
   private cityWindows: CityWindow[][] = [];
   private fx!: Phaser.GameObjects.Graphics;
+  /** Additive glow under the trails and blasts, and the sparks (ADR-NW04). */
+  private glow!: Phaser.GameObjects.Graphics;
+  private sparks!: ParticlePool;
+  private sparkBursts = 0;
   /** Real time not yet simulated; the world advances in fixed steps (ADR-NW03). */
   private pendingMs = 0;
   private lastShot: GameSnapshot['lastShot'] = null;
@@ -204,7 +222,10 @@ export class GameScene extends Phaser.Scene {
         .setVisible(false),
     );
     this.drawDefenses();
+    this.glow = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
     this.fx = this.add.graphics();
+    this.sparks = createParticlePool(PARTICLES.poolSize);
+    this.sparkBursts = 0;
     this.effects = new EffectPool(this, [IMPACT, CITY_HIT], EFFECTS.poolSize);
     this.effectsPlayed = { impact: 0, cityHit: 0 };
     this.splits = 0;
@@ -318,6 +339,7 @@ export class GameScene extends Phaser.Scene {
       }
       // After a long stall, drop the backlog instead of fast-forwarding through it.
       if (steps === MAX_STEPS_PER_FRAME) this.pendingMs = 0;
+      stepParticles(this.sparks, deltaMs, PARTICLES.gravity);
     }
     this.handleEvents();
     this.drawMoving();
@@ -435,6 +457,8 @@ export class GameScene extends Phaser.Scene {
       hudHigh: this.highText.text,
       effects: this.effects.activeCount,
       effectsPlayed: { ...this.effectsPlayed },
+      sparks: liveCount(this.sparks),
+      sparkBursts: this.sparkBursts,
       splits: this.splits,
       message: this.messageLines.filter((t) => t.visible).map((t) => t.text),
     };
@@ -450,9 +474,11 @@ export class GameScene extends Phaser.Scene {
           break;
         case 'warheadDestroyed':
           this.updateScore();
+          this.sparkBurst(e.at, PARTICLES.kill);
           break;
         case 'impact':
           this.playEffect(IMPACT, e.at);
+          this.sparkBurst(e.at, PARTICLES.impact);
           break;
         case 'warheadSplit':
           this.splits++;
@@ -461,13 +487,22 @@ export class GameScene extends Phaser.Scene {
           this.raidersDestroyed++;
           this.updateScore();
           this.playEffect(IMPACT, e.at);
+          this.sparkBurst(e.at, PARTICLES.raider);
           break;
         case 'cityDestroyed':
           this.playEffect(CITY_HIT, { x: this.world.cities[e.index]?.x ?? e.at.x, y: GROUND_Y });
+          this.sparkBurst(
+            { x: this.world.cities[e.index]?.x ?? e.at.x, y: GROUND_Y - 1 },
+            PARTICLES.city,
+          );
           defensesChanged = true;
           break;
         case 'baseDestroyed':
           this.playEffect(CITY_HIT, { x: this.world.bases[e.index]?.x ?? e.at.x, y: GROUND_Y });
+          this.sparkBurst(
+            { x: this.world.bases[e.index]?.x ?? e.at.x, y: GROUND_Y - 1 },
+            PARTICLES.city,
+          );
           defensesChanged = true;
           break;
         case 'waveCleared': {
@@ -675,6 +710,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Trails, missiles, aim markers and blasts, redrawn every frame. */
   private drawMoving(): void {
+    this.drawGlow();
     const g = this.fx.clear();
     for (const h of this.world.warheads) {
       if (h.smart) {
@@ -706,6 +742,36 @@ export class GameScene extends Phaser.Scene {
       g.fillStyle(COLORS.blastOuter).fillCircle(b.center.x, b.center.y, r);
       g.fillStyle(COLORS.blastInner).fillCircle(b.center.x, b.center.y, r * TRAILS.blastCore);
     }
+  }
+
+  /** Soft additive halos under every trail and blast, then the sparks (ADR-NW04). */
+  private drawGlow(): void {
+    const g = this.glow.clear();
+    for (const halo of GLOW.trailHalos) {
+      g.lineStyle(halo.width, COLORS.warheadTrail, halo.alpha);
+      for (const h of this.world.warheads) {
+        if (h.smart) continue;
+        if (h.stemFrom) g.lineBetween(h.stemFrom.x, h.stemFrom.y, h.origin.x, h.origin.y);
+        g.lineBetween(h.origin.x, h.origin.y, h.pos.x, h.pos.y);
+      }
+      g.lineStyle(halo.width, COLORS.interceptorTrail, halo.alpha);
+      for (const i of this.world.interceptors)
+        g.lineBetween(i.origin.x, i.origin.y, i.pos.x, i.pos.y);
+    }
+    for (const halo of GLOW.blastHalos) {
+      g.fillStyle(COLORS.blastOuter, halo.alpha);
+      for (const b of this.world.blasts) {
+        g.fillCircle(b.center.x, b.center.y, blastRadius(b.ageMs) * halo.scale);
+      }
+    }
+    for (const p of this.sparks.particles) {
+      if (!p.alive) continue;
+      g.fillStyle(p.color, particleFade(p)).fillRect(Math.round(p.x), Math.round(p.y), 1, 1);
+    }
+  }
+
+  private sparkBurst(at: Point, spec: BurstSpec): void {
+    if (burst(this.sparks, at, spec, this.rng.visual) > 0) this.sparkBursts++;
   }
 
   /** Placeholder shapes until the M4 art pass: a bomber facing its way, or a satellite. */
