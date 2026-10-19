@@ -4,9 +4,10 @@ import { COLORS, DEBUG_OVERLAY, HUD } from '../config/tuning';
 import type { GameScene } from '../scenes/GameScene';
 
 /**
- * Dev-only overlay (ROADMAP M2.7): frame rate and the simulation's counts, for tuning the
- * waves and checking phones. It is imported only outside production builds (see main.ts),
- * shows when the URL has ?debug, and the backquote key toggles it.
+ * Debug overlay (ROADMAP M2.7): frame rate and the simulation's counts, for tuning the waves
+ * and checking phones. main.ts loads it in dev and e2e builds, and in production only with
+ * ?debug in the address. It shows when the address has ?debug; outside production the
+ * backquote key also toggles it. It only reads game state and draws text on the canvas.
  */
 export class DebugScene extends Phaser.Scene {
   private text!: Phaser.GameObjects.Text;
@@ -34,6 +35,7 @@ export class DebugScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
       if (seenKeys.has(e)) return;
       seenKeys.add(e);
+      if (import.meta.env.MODE === 'production') return;
       if (e.key === DEBUG_OVERLAY.toggleKey && !e.repeat) this.toggle();
     });
   }

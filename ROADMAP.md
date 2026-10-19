@@ -63,7 +63,7 @@
 - [x] M2.4 Bonus city every 10,000 points
 - [x] M2.5 High score saved in localStorage
 - [x] M2.6 Title screen, pause and resume, game-over screen
-- [x] M2.7 Dev-only debug overlay (wave, counts, fps)
+- [x] M2.7 Debug overlay (wave, counts, fps): dev builds, and production with `?debug` (owner, 2026-10-19, to measure phones)
 - [x] M2.8 Wave score multiplier: kill points and the end-of-wave bonus rise every two waves up to a cap (approved 2026-10-18)
 - [x] M2.9 WebKit added to the Playwright matrix, desktop and phone (approved 2026-10-18)
 

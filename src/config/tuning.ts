@@ -396,7 +396,7 @@ export const PAUSE = {
   barGap: 2,
 } as const;
 
-/** The dev-only debug overlay (M2.7): frame rate and counts, left out of production builds. */
+/** The debug overlay (M2.7): frame rate and counts. Production loads it only with ?debug. */
 export const DEBUG_OVERLAY = {
   /** URL query parameter that shows it (?debug), and the key that toggles it. */
   queryParam: 'debug',
