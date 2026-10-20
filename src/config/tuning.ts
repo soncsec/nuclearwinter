@@ -611,11 +611,33 @@ export const TITLE = {
   dailyTapHalfHeight: 9,
   dailyPanelWidth: 260,
   dailyPanelHeight: 16,
-  /** The settings button, under the daily challenge. */
+  /** The bottom row under the daily challenge: "How to play" (M7.1) and settings, side by side. */
   settingsY: 188,
   settingsTapHalfHeight: 7,
-  settingsPanelWidth: 120,
   settingsPanelHeight: 14,
+  helpX: 136,
+  helpPanelWidth: 128,
+  settingsX: 260,
+  settingsPanelWidth: 104,
+} as const;
+
+/** The "How to play" pages (M7.1): a panel of text lines, a prompt, and the page number. */
+export const HELP = {
+  titleY: 20,
+  panelTop: 40,
+  panelWidth: 368,
+  panelHeight: 138,
+  firstLineY: 46,
+  lineGap: 12,
+  /** Most lines on one page; `logic/help.ts` is tested to fit. */
+  maxLines: 11,
+  /** Space kept clear at each side of a line, in game pixels. */
+  sideMargin: 12,
+  promptY: 184,
+  /** Desktop keys: the next page (or back, from the last), the page before, and back. */
+  nextKeys: ['enter', ' ', 'arrowright'],
+  previousKeys: ['arrowleft'],
+  backKeys: ['escape', 'backspace', 'b'],
 } as const;
 
 /** The settings screen (M4.5): its rows, and the keys that toggle them on desktop. */
@@ -640,6 +662,8 @@ export const SETTINGS = {
 export const DAILY_KEY = 'd';
 /** Opens the settings screen from the title. */
 export const SETTINGS_KEY = 's';
+/** Opens "How to play" from the title (M7.1). */
+export const HELP_KEY = 'h';
 
 /** The pause button: a tap target in the HUD's top-right corner, with a two-bar icon. */
 export const PAUSE = {
