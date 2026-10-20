@@ -13,7 +13,7 @@
 | M4 The Nuclear Winter look | Done: owner approved the look and the laptop speed with bloom on, 2026-10-19; vibration not felt on a device (the owner has no Android phone, and iPhones have no Vibration API), covered by the e2e tests |
 | M5 Mobile and launch (MVP) | Done: owner signed off the MVP 2026-10-19; 1.0 live the same day |
 | M6 Audio | Done: owner approved the sound on the live game, 2026-10-20 |
-| M7 After 1.0 | In progress |
+| M7 After 1.0 | M7.1 done (How to play, owner approved 2026-10-20); no further tasks planned |
 
 ## Risks
 
@@ -140,3 +140,5 @@
 - [x] M7.1 "How to play" screen (owner 2026-10-20): a button beside Settings on the title (key H) opens three pages (controls, scoring, enemies) built from the tuning numbers; a tap or Enter turns the page, Escape goes back; stores nothing
 
 **Acceptance criteria:** owner finds the pages clear on desktop and phone, and they match the game.
+
+**Owner sign-off:** M7.1 approved on the live game 2026-10-20 (release 20261020T211012Z-48ccc5c8).
