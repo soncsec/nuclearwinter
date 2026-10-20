@@ -120,7 +120,7 @@ export interface GameSnapshot {
   /** Smart bombs among the warheads. */
   smartBombs: number;
   /** Bombers and satellites in the sky. */
-  raiders: { kind: RaiderKind; x: number; y: number }[];
+  raiders: { kind: RaiderKind; x: number; y: number; dropsLeft: number }[];
   /** Bombers and satellites shot down so far this game. */
   raidersDestroyed: number;
   interceptors: number;
@@ -517,7 +517,12 @@ export class GameScene extends Phaser.Scene {
       outLabels: this.outLabels.map((t) => t.visible),
       warheads: w.warheads.map((h) => ({ ...h.pos })),
       smartBombs: w.warheads.filter((h) => h.smart).length,
-      raiders: w.raiders.map((r) => ({ kind: r.kind, x: r.pos.x, y: r.pos.y })),
+      raiders: w.raiders.map((r) => ({
+        kind: r.kind,
+        x: r.pos.x,
+        y: r.pos.y,
+        dropsLeft: r.dropsLeft,
+      })),
       raidersDestroyed: this.raidersDestroyed,
       interceptors: w.interceptors.length,
       blasts: w.blasts.length,

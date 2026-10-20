@@ -48,3 +48,26 @@ export async function tapGame(page: Page, info: TestInfo, x: number, y: number):
   if (info.project.use.hasTouch) await page.touchscreen.tap(p.x, p.y);
   else await page.mouse.click(p.x, p.y);
 }
+
+/**
+ * Waits for `check` to hold, timed by the game's own clock rather than the wall clock. It
+ * gives up when the game clock has run `gameMs` past its start, so a busy machine (fewer
+ * frames, the game clock falling behind real time) cannot fail a test that would pass.
+ * `realCapMs` only stops a game that has frozen from hanging the test.
+ */
+export async function waitInGameTime(
+  page: Page,
+  check: (snap: GameSnapshot) => boolean,
+  gameMs: number,
+  realCapMs = 120_000,
+): Promise<'met' | 'game time ran out' | 'real time ran out'> {
+  const start = (await snapshot(page)).timeMs;
+  const deadline = Date.now() + realCapMs;
+  while (Date.now() < deadline) {
+    const snap = await snapshot(page);
+    if (check(snap)) return 'met';
+    if (snap.timeMs - start > gameMs) return 'game time ran out';
+    await page.waitForTimeout(100);
+  }
+  return 'real time ran out';
+}
