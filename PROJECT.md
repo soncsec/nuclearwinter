@@ -35,7 +35,7 @@ Casual players visiting `games.soncrant.com`, on any current browser and device.
 | Art | Shared art pack (`legacy/`, CC0): city skylines (Warped Synth City / Urban Landscape), explosion packs, space or night-sky backgrounds. Gaps (bases) are filled with pack props or our own simple pixel sprites. |
 | Font | Press Start 2P (SIL OFL 1.1), as in Star Destroyer and the portal |
 | Daily challenge | A mode where everyone gets the same waves each day (seed from the UTC date), with its own best score saved on the device |
-| Vibration | Short phone vibration when a city is hit, on devices that support it (Android browsers; Safari has no Vibration API); off when "reduce flashing" is on or vibration is turned off in settings |
+| Vibration | Short phone vibration when a city or missile base is destroyed, on devices that support it (Android browsers; Safari has no Vibration API); has its own on/off setting, separate from "reduce flashing" |
 
 ### Out of scope for 1.0
 
@@ -87,6 +87,7 @@ A complete, replayable game, live on the portal, playable on desktop, phone and 
 | 2026-10-19 | Tuning (M3.8): 12 missiles per base instead of 10; a bonus city every 5,000 points instead of the arcade's 10,000 |
 | 2026-10-19 | 1.0 tagged `v1.0.0` with a GitHub release |
 | 2026-10-20 | Audio (M6.1): sound effects generated in code with the Web Audio API, no audio files (ADR-NW09); a mute setting joins the saved settings |
+| 2026-10-20 | Vibration keeps its own setting; "reduce flashing" does not turn it off (the doc said it did; the game never has). Sound sampler approved (M6.2) |
 
 ## 9. Open questions
 
