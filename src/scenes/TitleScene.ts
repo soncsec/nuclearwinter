@@ -5,6 +5,7 @@ import {
   CONFIRM_KEYS,
   DAILY_KEY,
   GAME_WIDTH,
+  HELP_KEY,
   HUD,
   SCREENS,
   SETTINGS_KEY,
@@ -82,21 +83,10 @@ export class TitleScene extends Phaser.Scene {
       }),
     );
 
-    // Settings (M4.5): a smaller band under the daily challenge.
-    this.add
-      .rectangle(
-        GAME_WIDTH / 2,
-        TITLE.settingsY + HUD.fontSizePx / 2,
-        TITLE.settingsPanelWidth,
-        TITLE.settingsPanelHeight,
-        COLORS.messagePanel,
-      )
-      .setAlpha(SCREENS.panelAlpha)
-      .setStrokeStyle(1, COLORS.dailyButton);
+    // Settings (M4.5) and "How to play" (M7.1): two smaller bands under the daily challenge.
     this.texts.push(
-      centredText(this, TITLE.settingsY, `${touch ? '' : 'S  '}SETTINGS`, {
-        color: COLORS.title,
-      }),
+      this.button(TITLE.settingsX, TITLE.settingsPanelWidth, `${touch ? '' : 'S  '}SETTINGS`),
+      this.button(TITLE.helpX, TITLE.helpPanelWidth, `${touch ? '' : 'H  '}HOW TO PLAY`),
     );
 
     // The build number, so a play-test report can say exactly which build it was (M3.7).
@@ -111,18 +101,23 @@ export class TitleScene extends Phaser.Scene {
     );
 
     // One input path for mouse and touch (ADR-NW06): a tap on the daily band starts the daily
-    // challenge, any other tap a normal game. Desktop players can also press a key.
+    // challenge, a tap on the bottom row opens whichever of its two buttons is nearer, and any
+    // other tap starts a normal game. Desktop players can also press a key.
+    const rowSplitX =
+      (TITLE.helpX + TITLE.helpPanelWidth / 2 + TITLE.settingsX - TITLE.settingsPanelWidth / 2) / 2;
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       const onDaily =
         Math.abs(p.worldY - (TITLE.dailyY + HUD.fontSizePx / 2)) <= TITLE.dailyTapHalfHeight;
-      const onSettings =
+      const onRow =
         Math.abs(p.worldY - (TITLE.settingsY + HUD.fontSizePx / 2)) <= TITLE.settingsTapHalfHeight;
-      if (onSettings) this.openSettings();
+      if (onRow && p.worldX < rowSplitX) this.openScreen('Help');
+      else if (onRow) this.openScreen('Settings');
       else this.startGame(onDaily ? 'daily' : 'normal');
     });
     onKeyPress(this, (key) => {
       if (key === DAILY_KEY) this.startGame('daily');
-      else if (key === SETTINGS_KEY) this.openSettings();
+      else if (key === SETTINGS_KEY) this.openScreen('Settings');
+      else if (key === HELP_KEY) this.openScreen('Help');
       else if (CONFIRM_KEYS.includes(key)) this.startGame('normal');
     });
   }
@@ -139,11 +134,32 @@ export class TitleScene extends Phaser.Scene {
     return this.texts.map((t) => t.text);
   }
 
-  /** Opens the settings screen. */
-  openSettings(): void {
+  /** Opens the settings or "How to play" screen. */
+  openScreen(key: 'Settings' | 'Help'): void {
     if (this.started) return;
     this.started = true;
-    this.scene.start('Settings');
+    this.scene.start(key);
+  }
+
+  /** A button-like band on the bottom row, centred at `x`, with its label. */
+  private button(x: number, width: number, label: string): Phaser.GameObjects.Text {
+    this.add
+      .rectangle(
+        x,
+        TITLE.settingsY + HUD.fontSizePx / 2,
+        width,
+        TITLE.settingsPanelHeight,
+        COLORS.messagePanel,
+      )
+      .setAlpha(SCREENS.panelAlpha)
+      .setStrokeStyle(1, COLORS.dailyButton);
+    return this.add
+      .text(x, TITLE.settingsY, label, {
+        fontFamily: FONT_FAMILY,
+        fontSize: `${HUD.fontSizePx}px`,
+        color: COLORS.title,
+      })
+      .setOrigin(0.5, 0);
   }
 
   /** Starts a game. Taps, keys and the test hook call it; a second call does nothing. */

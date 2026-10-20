@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { Point } from '../logic/geometry';
 import type { GameScene, GameSnapshot } from '../scenes/GameScene';
+import type { HelpScene } from '../scenes/HelpScene';
 import type { SettingsScene } from '../scenes/SettingsScene';
 import type { TitleScene } from '../scenes/TitleScene';
 import type { DebugScene } from './DebugOverlay';
@@ -19,6 +20,8 @@ export interface TestHook {
   titleLines(): string[] | null;
   /** The settings screen's lines, top to bottom, or null when it is not showing. */
   settingsLines(): string[] | null;
+  /** The "How to play" page showing and its lines, or null when it is not showing. */
+  help(): { page: number; pages: number; lines: string[] } | null;
   /** Starts a game from the title screen, as a tap would: normal, or the daily challenge. */
   start(mode?: 'normal' | 'daily'): void;
   /** Tells the game the page was hidden, as switching tabs or apps does. */
@@ -107,6 +110,10 @@ export function installTestHook(game: Phaser.Game): void {
     settingsLines: () =>
       game.scene.isActive('Settings')
         ? ((game.scene.getScene('Settings') as SettingsScene | null)?.lines() ?? null)
+        : null,
+    help: () =>
+      game.scene.isActive('Help')
+        ? ((game.scene.getScene('Help') as HelpScene | null)?.state() ?? null)
         : null,
     start: (mode) => title()?.startGame(mode),
     hide: () => game.events.emit(Phaser.Core.Events.HIDDEN),

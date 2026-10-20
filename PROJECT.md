@@ -36,6 +36,7 @@ Casual players visiting `games.soncrant.com`, on any current browser and device.
 | Font | Press Start 2P (SIL OFL 1.1), as in Star Destroyer and the portal |
 | Daily challenge | A mode where everyone gets the same waves each day (seed from the UTC date), with its own best score saved on the device |
 | Vibration | Short phone vibration when a city or missile base is destroyed, on devices that support it (Android browsers; Safari has no Vibration API); has its own on/off setting, separate from "reduce flashing" |
+| How to play | Added after 1.0 (M7.1, owner 2026-10-20): a button on the title opens three pages on controls, scoring and enemies, with every number taken from the game's tuning. Stores nothing. |
 
 ### Out of scope for 1.0
 
@@ -88,6 +89,7 @@ A complete, replayable game, live on the portal, playable on desktop, phone and 
 | 2026-10-19 | 1.0 tagged `v1.0.0` with a GitHub release |
 | 2026-10-20 | Audio (M6.1): sound effects generated in code with the Web Audio API, no audio files (ADR-NW09); a mute setting joins the saved settings |
 | 2026-10-20 | Vibration keeps its own setting; "reduce flashing" does not turn it off (the doc said it did; the game never has). Sound sampler approved (M6.2) |
+| 2026-10-20 | Added to scope: a "How to play" screen (M7.1), opened by a button on the title, not shown automatically (that would need a new saved flag). Sharing the daily score was considered and set aside: the clipboard and share features need HTTPS |
 
 ## 9. Open questions
 
