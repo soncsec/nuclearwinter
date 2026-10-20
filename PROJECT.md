@@ -84,6 +84,8 @@ A complete, replayable game, live on the portal, playable on desktop, phone and 
 | 2026-10-19 | From the product review: separate random streams (ADR-NW08), build number on the title, tuning session after the enemies, look mock-up before M4, one settings screen ("reduce flashing" also stops screen shake) |
 | 2026-10-19 | Look approved (M4.0, `docs/look/`): night sky with stars, darkened Synth City skyline, glowing trails and blasts, smoky sky and thick ash as cities fall, warm city-hit flash with a small shake; cities a bit darker than in the mock-up |
 | 2026-10-19 | MVP signed off by the owner; release as 1.0 (M5.5) |
+| 2026-10-19 | Tuning (M3.8): 12 missiles per base instead of 10; a bonus city every 5,000 points instead of the arcade's 10,000 |
+| 2026-10-19 | 1.0 tagged `v1.0.0` with a GitHub release |
 
 ## 9. Open questions
 

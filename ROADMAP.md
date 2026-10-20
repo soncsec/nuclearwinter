@@ -11,7 +11,7 @@
 | M2 Core game | Done |
 | M3 Enemies | Done: owner play-test and tuning 2026-10-19 |
 | M4 The Nuclear Winter look | Done: owner approved the look and the laptop speed with bloom on, 2026-10-19; vibration not felt on a device (the owner has no Android phone, and iPhones have no Vibration API), covered by the e2e tests |
-| M5 Mobile and launch (MVP) | In progress |
+| M5 Mobile and launch (MVP) | Done: owner signed off the MVP 2026-10-19; 1.0 live the same day |
 | M6 Audio | Not started (after the MVP) |
 
 ## Risks
@@ -110,7 +110,7 @@
 - [x] M5.2 Automatic quality setting and frame-rate check on phones (bloom switches itself off when frames are slow, M4.7; owner 2026-10-19: phone frame rate good)
 - [x] M5.3 Load-time check (under 2 seconds on the local network): `scripts/load-time.mjs`; production 2026-10-19, 10 first visits: median 1.36 s, worst 1.52 s, 496 KiB (measured while the dev machine was heavily loaded)
 - [x] M5.4 Portal card image (256×192) and status `live` (portal PR #25, merged and released 2026-10-18 at the owner's request)
-- [ ] M5.5 Release 1.0 to production; production check workflow passes
+- [x] M5.5 Release 1.0 to production; the release script's production smoke test passes (wording agreed with the owner 2026-10-19: there is no separate production check workflow, as GitHub's runners can't reach the server). Released 2026-10-19 as `20261020T024155Z-acc10e67` (tag `v1.0.0`): 412 e2e tests, smoke test passed, ZAP 0 failures
 
 **Acceptance criteria:** every non-functional requirement in PROJECT.md met and recorded; owner signs off the MVP.
 
