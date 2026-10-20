@@ -35,7 +35,7 @@ test('a tap on the title starts the game without firing a missile', async ({ pag
   expect(snap.phase).toBe('playing');
   expect(snap.wave).toBe(1);
   expect(snap.interceptors).toBe(0);
-  expect(snap.ammo).toEqual([10, 10, 10]);
+  expect(snap.ammo).toEqual([12, 12, 12]);
 });
 
 test('Enter starts the game from the keyboard', async ({ page }, info) => {
@@ -77,7 +77,7 @@ test('the pause button stops the game and a tap resumes it without firing', asyn
   const resumed = await snapshot(page);
   expect(resumed.message).toEqual([]);
   expect(resumed.interceptors).toBe(0);
-  expect(resumed.ammo).toEqual([10, 10, 10]);
+  expect(resumed.ammo).toEqual([12, 12, 12]);
 
   // Play goes on: the next tap is a shot again.
   await tapGame(page, info, 192, 100);

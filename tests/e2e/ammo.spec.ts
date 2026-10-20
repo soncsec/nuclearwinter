@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { openGame, snapshot, tapGame, toPage } from './helpers';
 
-const AMMO = 10;
+/** Missiles per base each wave (BASES.ammo). */
+const AMMO = 12;
 
 test.beforeEach(async ({ page }) => {
   await openGame(page);

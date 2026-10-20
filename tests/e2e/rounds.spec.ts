@@ -45,22 +45,22 @@ test('clearing the wave counts up a bonus for cities and missiles left', async (
     GROUND_Y,
   );
   await expect.poll(async () => (await snapshot(page)).cities[0]).toBe(false);
-  // Spend two missiles, so 28 are left.
+  // Spend two missiles, so 34 are left.
   await tapGame(page, info, 30, 60);
   await tapGame(page, info, 350, 60);
-  await expect.poll(async () => (await snapshot(page)).ammo).toEqual([9, 10, 9]);
+  await expect.poll(async () => (await snapshot(page)).ammo).toEqual([11, 12, 11]);
   await page.evaluate(() => window.__game?.finishWave());
 
   await expect
     .poll(async () => (await snapshot(page)).phase, { timeout: 30_000 })
     .toBe('waveCleared');
-  // 5 cities x 100 + 28 missiles x 5 = 640, counted up on screen and into the score.
-  await expect.poll(async () => (await snapshot(page)).message[2]).toBe('BONUS 640');
+  // 5 cities x 100 + 34 missiles x 5 = 670, counted up on screen and into the score.
+  await expect.poll(async () => (await snapshot(page)).message[2]).toBe('BONUS 670');
   const snap = await snapshot(page);
-  expect(snap.score).toBe(640);
-  expect(snap.hudScore).toBe('000640');
+  expect(snap.score).toBe(670);
+  expect(snap.hudScore).toBe('000670');
   expect(snap.message[0]).toBe('WAVE 1 CLEARED');
-  expect(snap.message[1]).toBe('CITIES 5  MISSILES 28');
+  expect(snap.message[1]).toBe('CITIES 5  MISSILES 34');
   expect(snap.message[3]).toMatch(/^(TAP|CLICK) FOR NEXT WAVE$/);
 });
 
@@ -82,7 +82,7 @@ test('a base destroyed in one wave is rebuilt for the next', async ({ page }, in
   await expect.poll(async () => (await snapshot(page)).hudWave).toBe('WAVE 2');
   const snap = await snapshot(page);
   expect(snap.bases).toEqual([true, true, true]);
-  expect(snap.ammo).toEqual([10, 10, 10]);
+  expect(snap.ammo).toEqual([12, 12, 12]);
 });
 
 test('the game starts at wave 1 and says so', async ({ page }) => {
@@ -112,7 +112,7 @@ test('after a cleared wave, a tap starts the next wave with cities, score and re
   await expect
     .poll(async () => (await snapshot(page)).phase, { timeout: 30_000 })
     .toBe('waveCleared');
-  expect((await snapshot(page)).ammo).toEqual([9, 10, 10]);
+  expect((await snapshot(page)).ammo).toEqual([11, 12, 12]);
 
   await tapToRestart(page, info);
   // The HUD and banner update on the frame after the tap, so wait for them.
@@ -123,7 +123,7 @@ test('after a cleared wave, a tap starts the next wave with cities, score and re
   expect(snap.bannersShown).toEqual(['WAVE 1', 'WAVE 2']);
   expect(snap.message).toEqual([]);
   expect(snap.cities).toEqual([false, true, true, true, true, true]);
-  expect(snap.ammo).toEqual([10, 10, 10]);
+  expect(snap.ammo).toEqual([12, 12, 12]);
   expect(snap.seed).toBe(7);
 });
 
@@ -218,23 +218,23 @@ test('reaching 10,000 points rebuilds a lost city at the next wave', async ({ pa
 
 test('from wave 3 every point counts double, and the banner says so', async ({ page }, info) => {
   await openGame(page, '?seed=7');
-  // Clear waves 1 and 2 with nothing launched: all six cities and 30 missiles each time.
+  // Clear waves 1 and 2 with nothing launched: all six cities and 36 missiles each time.
   for (const wave of [1, 2]) {
     await page.evaluate(() => window.__game?.finishWave());
     await expect
       .poll(async () => (await snapshot(page)).phase, { timeout: 30_000 })
       .toBe('waveCleared');
-    expect((await snapshot(page)).message[1]).toBe('CITIES 6  MISSILES 30');
+    expect((await snapshot(page)).message[1]).toBe('CITIES 6  MISSILES 36');
     await tapToRestart(page, info);
     await expect.poll(async () => (await snapshot(page)).wave).toBe(wave + 1);
   }
   await expect
     .poll(async () => (await snapshot(page)).bannersShown)
     .toEqual(['WAVE 1', 'WAVE 2', 'WAVE 3\n2X POINTS']);
-  // Two clean waves at 1x: 2 x (6 x 100 + 30 x 5) = 1500.
+  // Two clean waves at 1x: 2 x (6 x 100 + 36 x 5) = 1560.
   const before = await snapshot(page);
   expect(before.multiplier).toBe(2);
-  expect(before.score).toBe(1500);
+  expect(before.score).toBe(1560);
 
   // A kill on wave 3 is worth 2 x 25.
   await page.evaluate(() => window.__game?.holdWave());
@@ -244,14 +244,14 @@ test('from wave 3 every point counts double, and the banner says so', async ({ p
   );
   await expect.poll(async () => (await snapshot(page)).warheads.length).toBe(1);
   await tapGame(page, info, 120, 62);
-  await expect.poll(async () => (await snapshot(page)).score, { timeout: 30_000 }).toBe(1550);
+  await expect.poll(async () => (await snapshot(page)).score, { timeout: 30_000 }).toBe(1610);
 
   // The wave's bonus is doubled too, and the tally says so.
   await page.evaluate(() => window.__game?.finishWave());
   await expect
     .poll(async () => (await snapshot(page)).phase, { timeout: 30_000 })
     .toBe('waveCleared');
-  await expect.poll(async () => (await snapshot(page)).message[2]).toBe('BONUS 1490');
-  expect((await snapshot(page)).message[1]).toBe('CITIES 6  MISSILES 29  2X');
-  expect((await snapshot(page)).score).toBe(1550 + 1490);
+  await expect.poll(async () => (await snapshot(page)).message[2]).toBe('BONUS 1550');
+  expect((await snapshot(page)).message[1]).toBe('CITIES 6  MISSILES 35  2X');
+  expect((await snapshot(page)).score).toBe(1610 + 1550);
 });
