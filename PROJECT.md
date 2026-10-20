@@ -27,7 +27,7 @@ Casual players visiting `games.soncrant.com`, on any current browser and device.
 | Defenses | 6 cities and 3 missile bases. Each base has limited ammo per wave and is restored between waves. |
 | Enemies | Introduced as waves progress: plain warheads, warheads that split mid-flight (MIRVs), bombers and satellites that launch missiles, and smart bombs that dodge blasts |
 | Waves | Endless. The first few are tuned by hand, then a formula raises warhead count, speed and the enemy mix. |
-| Scoring | Points per kill, multiplied by a wave multiplier that rises every two waves up to a cap (as in the arcade game); end-of-wave bonus for leftover ammo and surviving cities, multiplied the same way; a bonus city every 10,000 points. Game over when all cities are lost. High score in localStorage. |
+| Scoring | Points per kill, multiplied by a wave multiplier that rises every two waves up to a cap (as in the arcade game); end-of-wave bonus for leftover ammo and surviving cities, multiplied the same way; a bonus city every 5,000 points (the arcade game uses 10,000; lowered by the owner 2026-10-19). Game over when all cities are lost. High score in localStorage. |
 | Theme | Falling ash and a darkening sky that thicken as cities are lost; a nuclear flash when a city is hit, kept under the photosensitive-safe limit; a "reduce flashing" setting |
 | Look | Pixel art at native resolution with whole-number scaling, plus glowing missile trails, bloom where performance allows, particles and screen shake |
 | Screens | Title, game, wave-bonus tally, game over with high score, pause |
