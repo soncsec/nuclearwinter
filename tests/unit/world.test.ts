@@ -478,7 +478,7 @@ describe('bonus cities', () => {
     expect(createWorld()).toMatchObject({ bonusCitiesAwarded: 0, spareCities: 0 });
   });
 
-  it('every 10,000 points rebuilds a lost city at the next wave, leftmost first', () => {
+  it('each bonus-city threshold rebuilds a lost city at the next wave, leftmost first', () => {
     const w = quietWorld();
     w.cities.forEach((c, i) => (c.alive = i !== 1 && i !== 4));
     const events = nextWaveWithScore(w, SCORE.bonusCityEvery + 5);
@@ -488,11 +488,11 @@ describe('bonus cities', () => {
     expect(w.spareCities).toBe(0);
   });
 
-  it('is earned only once per 10,000 points', () => {
+  it('is earned only once per threshold', () => {
     const w = quietWorld();
     w.cities.forEach((c, i) => (c.alive = i > 1));
     nextWaveWithScore(w, SCORE.bonusCityEvery);
-    const events = nextWaveWithScore(w, SCORE.bonusCityEvery + 9_000);
+    const events = nextWaveWithScore(w, SCORE.bonusCityEvery * 2 - 1);
     expect(events.filter((e) => e.type === 'bonusCity')).toEqual([]);
     expect(w.cities[1]?.alive).toBe(false);
     expect(w.bonusCitiesAwarded).toBe(1);

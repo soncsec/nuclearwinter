@@ -319,8 +319,11 @@ export const SCORE = {
   missileLeft: 5,
   /** End-of-wave bonus for each city still standing (arcade value). */
   citySaved: 100,
-  /** A bonus city is earned every this many points (arcade value). */
-  bonusCityEvery: 10_000,
+  /**
+   * A bonus city is earned every this many points. The arcade game uses 10,000; the owner
+   * lowered it to 5,000 (2026-10-19), as play rarely reached 10,000 before the waves got hard.
+   */
+  bonusCityEvery: 5_000,
   /**
    * Wave multiplier (arcade rule): every point is worth 1x on waves 1-2, 2x on waves 3-4, and
    * one more every `multiplierEvery` waves, up to `multiplierMax`. Approved 2026-10-18.
