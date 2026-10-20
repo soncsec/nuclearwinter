@@ -100,8 +100,11 @@ export const BASES = {
   /** Launch point height above the ground. */
   launchHeight: 8,
   halfWidth: 10,
-  /** Counter-missiles per base each wave (classic Missile Command: 10). */
-  ammo: 10,
+  /**
+   * Counter-missiles per base each wave. Classic Missile Command has 10; the owner's tuning
+   * session (2026-10-19) found that a little short and raised it by 20%.
+   */
+  ammo: 12,
 } as const;
 
 /** The player's counter-missiles. */
