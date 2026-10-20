@@ -9,9 +9,9 @@
 | M0 Setup | Done |
 | M1 Walking skeleton (one wave, released to production) | Done: owner played on PC and phone 2026-10-18; phone frame rate 60 fps average, 54 worst (2026-10-19) |
 | M2 Core game | Done |
-| M3 Enemies | In progress |
-| M4 The Nuclear Winter look | Not started |
-| M5 Mobile and launch (MVP) | Not started |
+| M3 Enemies | Done: owner play-test and tuning 2026-10-19 |
+| M4 The Nuclear Winter look | Done: owner approved the look and the laptop speed with bloom on, 2026-10-19; vibration not felt on a device (the owner has no Android phone, and iPhones have no Vibration API), covered by the e2e tests |
+| M5 Mobile and launch (MVP) | In progress |
 | M6 Audio | Not started (after the MVP) |
 
 ## Risks
@@ -82,7 +82,7 @@
 - [x] M3.5 Daily challenge: same waves for everyone each day (seed from the UTC date), separate best score (moved from M2 on 2026-10-18, so the enemy roster is final first)
 - [x] M3.6 Separate random streams for gameplay and visuals (ADR-NW08), before M4 adds particles
 - [x] M3.7 Build number on the title screen, so play-test reports name the build
-- [ ] M3.8 Tuning session with the owner, using the debug overlay; the agreed numbers go into `tuning.ts`
+- [x] M3.8 Tuning session with the owner, using the debug overlay; the agreed numbers go into `tuning.ts` (2026-10-19: wave 1 good, hard from wave 6, speed fair, MIRVs fun, smart bombs fine; ammo raised 20%, from 10 to 12 missiles per base)
 
 **Acceptance criteria:** each enemy's behaviour unit tested; each appears by the wave set in `tuning.ts`; the daily challenge gives the same waves for the same date; owner play-test.
 
