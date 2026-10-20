@@ -52,12 +52,43 @@ export interface TestHook {
   feedFrames(frameMs: number, totalMs: number): void;
   /** Sets the score, e.g. to just below a bonus city. */
   setScore(score: number): void;
+  /**
+   * The loudest sample that reached the speakers since the last call (0 to 1), measured every
+   * frame after the master volume; null without Web Audio.
+   */
+  soundPeak(): number | null;
 }
 
 declare global {
   interface Window {
     __game?: TestHook;
   }
+}
+
+/** Listens to the game's output after the master volume, every frame, keeping the peak. */
+function soundMeter(game: Phaser.Game): () => number | null {
+  let peak = 0;
+  let started = false;
+  return () => {
+    const manager = game.sound;
+    if (!(manager instanceof Phaser.Sound.WebAudioSoundManager)) return null;
+    if (!started) {
+      started = true;
+      const analyser = manager.context.createAnalyser();
+      analyser.fftSize = 2048;
+      manager.masterVolumeNode.connect(analyser);
+      const data = new Float32Array(analyser.fftSize);
+      const sample = (): void => {
+        analyser.getFloatTimeDomainData(data);
+        for (const v of data) peak = Math.max(peak, Math.abs(v));
+        requestAnimationFrame(sample);
+      };
+      sample();
+    }
+    const result = peak;
+    peak = 0;
+    return result;
+  };
 }
 
 export function installTestHook(game: Phaser.Game): void {
@@ -90,6 +121,7 @@ export function installTestHook(game: Phaser.Game): void {
     setRestartDelay: (ms) => scene().testSetRestartDelay(ms),
     setScore: (score) => scene().testSetScore(score),
     feedFrames: (frameMs, totalMs) => scene().testFeedFrames(frameMs, totalMs),
+    soundPeak: soundMeter(game),
     scene: () => game.scene.getScenes(true)[0]?.scene.key ?? null,
     snapshot: () => {
       const s = game.scene.getScene('Game') as GameScene | null;

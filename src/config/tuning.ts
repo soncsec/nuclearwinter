@@ -620,19 +620,19 @@ export const TITLE = {
 
 /** The settings screen (M4.5): its rows, and the keys that toggle them on desktop. */
 export const SETTINGS = {
-  /** localStorage key; approved 2026-10-18 for reduce flashing and vibration only. */
+  /** localStorage key; approved for reduce flashing and vibration (2026-10-18) and mute (2026-10-20). */
   storageKey: 'nuclearwinter.settings',
   titleY: 36,
   /** Each option's row, and the hint line under it. */
-  rowYs: [84, 120],
+  rowYs: [68, 100, 132],
   hintGap: 15,
   backY: 170,
   rowTapHalfHeight: 10,
   panelWidth: 300,
   panelHeight: 16,
   backPanelWidth: 120,
-  /** Keys: 1 and 2 toggle the options; Escape, Backspace or B go back. */
-  toggleKeys: ['1', '2'],
+  /** Keys: 1, 2 and 3 toggle the options; Escape, Backspace or B go back. */
+  toggleKeys: ['1', '2', '3'],
   backKeys: ['escape', 'backspace', 'b'],
 } as const;
 
@@ -779,7 +779,7 @@ export const SOUNDS = {
       },
     ],
   },
-  /** Suggestion: a dull click when the player taps with no missiles left in range. */
+  /** A dull click when the player taps with no missiles left in range. */
   empty: {
     peak: 0.2,
     layers: [
@@ -795,7 +795,7 @@ export const SOUNDS = {
       },
     ],
   },
-  /** Suggestion: a bonus city is earned, a brighter, longer run than the wave jingle. */
+  /** A bonus city is earned: a brighter, longer run than the wave jingle. */
   bonusCity: {
     peak: 0.3,
     layers: jingle([NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6, NOTE.E6, NOTE.G6], 65, 300),
@@ -803,3 +803,23 @@ export const SOUNDS = {
 } as const satisfies Record<string, SoundRecipe>;
 
 export type SoundName = keyof typeof SOUNDS;
+
+/** How the game plays the sounds (ADR-NW09). */
+export const AUDIO = {
+  /** Overall loudness, under `maxMasterVolume` so no mix of sounds can get harsh. */
+  masterVolume: 0.7,
+  maxMasterVolume: 0.8,
+  /** Most copies of each sound playing at once; another copy waits for one to end. */
+  voices: {
+    launch: 3,
+    blast: 4,
+    cityHit: 2,
+    bonusTick: 1,
+    waveCleared: 1,
+    gameOver: 1,
+    empty: 1,
+    bonusCity: 1,
+  } satisfies Record<SoundName, number>,
+  /** Least time between ticks while the end-of-wave bonus counts up. */
+  bonusTickEveryMs: 60,
+} as const;

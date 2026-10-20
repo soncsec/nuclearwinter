@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { FONT_FAMILY, IMAGES, SHEETS } from '../assets/manifest';
 import {
+  AUDIO,
   AMMO_PIPS,
   BASE_KEYS,
   COLORS,
@@ -69,6 +70,7 @@ import {
   type RaiderKind,
   type World,
 } from '../logic/world';
+import { GameAudio, type SoundStats } from './audio';
 import { Backdrop, browserStore, onKeyPress } from './ui';
 
 /** Cheap counts for the dev debug overlay, read every frame. */
@@ -148,6 +150,8 @@ export interface GameSnapshot {
   bloom: boolean;
   /** Phone vibrations asked for this game (M4.8). */
   vibrations: number;
+  /** Sound effects started this game, and whether sound is muted (M6.2). */
+  sound: SoundStats;
   /** Nuclear winter: 0 with every city standing, 1 with all lost (M4.4), and flakes showing. */
   gloom: number;
   ashFlakes: number;
@@ -209,7 +213,11 @@ export class GameScene extends Phaser.Scene {
   private bannerUntil = 0;
   private bannersShown: string[] = [];
   /** The end-of-wave bonus counting up on screen, or null when no count is running. */
-  private tally: { scoreBefore: number; bonus: number; startedAt: number } | null = null;
+  private tally: { scoreBefore: number; bonus: number; startedAt: number; shown: number } | null =
+    null;
+  /** When the bonus count last ticked, so the ticks keep a steady pace. */
+  private lastTickAt = 0;
+  private audio!: GameAudio;
   private messageLines: Phaser.GameObjects.Text[] = [];
   private messagePanel!: Phaser.GameObjects.Rectangle;
   private outLabels: Phaser.GameObjects.Text[] = [];
@@ -250,6 +258,7 @@ export class GameScene extends Phaser.Scene {
     this.paused = false;
     this.backdrop = new Backdrop(this);
     this.settings = loadSettings(browserStore());
+    this.audio = new GameAudio(this, this.settings.mute);
     this.setUpBloom();
     this.gloom = 0;
 
@@ -538,6 +547,7 @@ export class GameScene extends Phaser.Scene {
       renderer: this.isWebGL() ? 'webgl' : 'canvas',
       bloom: this.bloomGov.on,
       vibrations: this.vibrations,
+      sound: this.audio.stats(),
       gloom: this.gloom,
       ashFlakes: visibleFlakes(this.gloom),
       splits: this.splits,
@@ -551,13 +561,21 @@ export class GameScene extends Phaser.Scene {
       switch (e.type) {
         case 'launch':
           this.lastShot = { baseIndex: e.baseIndex, target: { ...e.target } };
+          this.audio.play('launch');
           defensesChanged = true;
+          break;
+        case 'dryFire':
+          this.audio.play('empty');
+          break;
+        case 'blast':
+          this.audio.play('blast');
           break;
         case 'warheadDestroyed':
           this.updateScore();
           this.sparkBurst(e.at, PARTICLES.kill);
           break;
         case 'impact':
+          this.audio.play('blast');
           this.playEffect(IMPACT, e.at);
           this.sparkBurst(e.at, PARTICLES.impact);
           break;
@@ -591,6 +609,7 @@ export class GameScene extends Phaser.Scene {
         case 'waveCleared': {
           // Saved at every wave, so closing the tab mid-game keeps the record.
           this.saveBest(this.world.score);
+          this.audio.play('waveCleared');
           const b = e.bonus;
           this.showMessage(
             `WAVE ${e.number} CLEARED`,
@@ -602,7 +621,9 @@ export class GameScene extends Phaser.Scene {
             scoreBefore: this.world.score - b.total,
             bonus: b.total,
             startedAt: this.time.now,
+            shown: 0,
           };
+          this.lastTickAt = this.time.now;
           this.updateTally();
           break;
         }
@@ -611,6 +632,7 @@ export class GameScene extends Phaser.Scene {
           defensesChanged = true;
           break;
         case 'bonusCity':
+          this.audio.play('bonusCity');
           this.addToBanner(e.count === 1 ? 'BONUS CITY' : `${e.count} BONUS CITIES`);
           break;
         case 'cityRebuilt':
@@ -618,6 +640,7 @@ export class GameScene extends Phaser.Scene {
           break;
         case 'gameOver': {
           this.saveBest(this.world.score);
+          this.audio.play('gameOver');
           const newBest = this.world.score > this.highScore;
           this.showMessage(
             'GAME OVER',
@@ -655,6 +678,13 @@ export class GameScene extends Phaser.Scene {
     if (!this.tally) return;
     const { scoreBefore, bonus, startedAt } = this.tally;
     const shown = countUp(0, bonus, this.time.now - startedAt, SCREENS.bonusCountMs);
+    // A tick while the count climbs, no more often than the set pace.
+    const climbing = shown > this.tally.shown;
+    this.tally.shown = shown;
+    if (climbing && this.time.now - this.lastTickAt >= AUDIO.bonusTickEveryMs) {
+      this.lastTickAt = this.time.now;
+      this.audio.play('bonusTick');
+    }
     this.messageLines[2]?.setText(`BONUS ${shown}`);
     this.showScore(scoreBefore + shown);
     if (shown === bonus) this.tally = null;
@@ -923,10 +953,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * A city or base was destroyed: vibrate the phone, shake the screen, and flash it if the
-   * safe limit allows, each unless the player turned it off.
+   * A city or base was destroyed: a deep boom, vibrate the phone, shake the screen, and flash
+   * it if the safe limit allows, each unless the player turned it off.
    */
   private hitFeedback(): void {
+    this.audio.play('cityHit');
     // Vibration has its own setting, separate from "reduce flashing" (M4.8).
     if (vibrate(navigator, this.settings, VIBRATION.cityHit)) this.vibrations++;
     // "Reduce flashing" turns off both the flash and the shake (M4.5).

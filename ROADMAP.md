@@ -12,7 +12,7 @@
 | M3 Enemies | Done: owner play-test and tuning 2026-10-19 |
 | M4 The Nuclear Winter look | Done: owner approved the look and the laptop speed with bloom on, 2026-10-19; vibration not felt on a device (the owner has no Android phone, and iPhones have no Vibration API), covered by the e2e tests |
 | M5 Mobile and launch (MVP) | Done: owner signed off the MVP 2026-10-19; 1.0 live the same day |
-| M6 Audio | In progress |
+| M6 Audio | In progress: sounds in the game; waiting for the owner to approve them on the live game |
 
 ## Risks
 
@@ -128,6 +128,6 @@
 ## M6 — Audio (after the MVP)
 
 - [x] M6.1 Owner decides the audio approach (generated or CC0 pack): generated in code with the Web Audio API (ADR-NW09, owner 2026-10-20)
-- [ ] M6.2 Sound effects for launches, blasts, city hits, wave bonus and game over; mute setting. First a sound sampler page for the owner to hear and approve the sounds, then they are wired into the game
+- [x] M6.2 Sound effects for launches, blasts, city hits, wave bonus and game over; mute setting. First a sound sampler page for the owner to hear and approve the sounds, then they are wired into the game. Sampler approved 2026-10-20, with two extras (an "empty" click when no missile can fire, and a bonus-city jingle)
 
 **Acceptance criteria:** owner approves the sound on staging.
