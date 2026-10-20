@@ -4,8 +4,9 @@ import { openTitle, snapshot, tapGame, titleLines } from './helpers';
 const STORAGE_KEY = 'nuclearwinter.settings';
 /** Middles of the buttons in game pixels: TITLE.settingsY and SETTINGS rows in tuning.ts, + 4. */
 const TITLE_SETTINGS_Y = 192;
-const REDUCE_ROW_Y = 88;
-const VIBRATION_ROW_Y = 124;
+const REDUCE_ROW_Y = 72;
+const VIBRATION_ROW_Y = 104;
+const MUTE_ROW_Y = 136;
 const BACK_Y = 174;
 const GROUND_Y = 204;
 
@@ -24,15 +25,19 @@ test('settings are toggled by tapping, saved, and kept after a reload', async ({
   await openTitle(page);
   await tapGame(page, info, 192, TITLE_SETTINGS_Y);
   await expect.poll(() => scene(page)).toBe('Settings');
-  const keys = info.project.use.hasTouch ? ['', ''] : ['1  ', '2  '];
+  const keys = info.project.use.hasTouch ? ['', '', ''] : ['1  ', '2  ', '3  '];
   expect((await settingsLines(page))?.[1]).toBe(`${keys[0]}REDUCE FLASHING  OFF`);
   expect((await settingsLines(page))?.[3]).toBe(`${keys[1]}VIBRATION  ON`);
+  expect((await settingsLines(page))?.[5]).toBe(`${keys[2]}MUTE  OFF`);
+  expect((await settingsLines(page))?.[6]).toBe('TURNS OFF ALL SOUND');
 
   await tapGame(page, info, 192, REDUCE_ROW_Y);
   await expect.poll(async () => (await settingsLines(page))?.[1]).toMatch(/REDUCE FLASHING {2}ON$/);
   await tapGame(page, info, 192, VIBRATION_ROW_Y);
   await expect.poll(async () => (await settingsLines(page))?.[3]).toMatch(/VIBRATION {2}OFF$/);
-  expect(await stored(page)).toBe('reduceFlashing=1,vibration=0');
+  await tapGame(page, info, 192, MUTE_ROW_Y);
+  await expect.poll(async () => (await settingsLines(page))?.[5]).toMatch(/MUTE {2}ON$/);
+  expect(await stored(page)).toBe('reduceFlashing=1,vibration=0,mute=1');
 
   await tapGame(page, info, 192, BACK_Y);
   await expect.poll(() => scene(page)).toBe('Title');
@@ -42,6 +47,7 @@ test('settings are toggled by tapping, saved, and kept after a reload', async ({
   await expect.poll(() => scene(page)).toBe('Settings');
   expect((await settingsLines(page))?.[1]).toMatch(/ON$/);
   expect((await settingsLines(page))?.[3]).toMatch(/OFF$/);
+  expect((await settingsLines(page))?.[5]).toMatch(/ON$/);
 });
 
 test('the keyboard opens settings, toggles them and goes back', async ({ page }, info) => {
@@ -51,9 +57,11 @@ test('the keyboard opens settings, toggles them and goes back', async ({ page },
   await expect.poll(() => scene(page)).toBe('Settings');
   await page.keyboard.press('1');
   await expect.poll(async () => (await settingsLines(page))?.[1]).toBe('1  REDUCE FLASHING  ON');
+  await page.keyboard.press('3');
+  await expect.poll(async () => (await settingsLines(page))?.[5]).toBe('3  MUTE  ON');
   await page.keyboard.press('Escape');
   await expect.poll(() => scene(page)).toBe('Title');
-  expect(await stored(page)).toBe('reduceFlashing=1,vibration=1');
+  expect(await stored(page)).toBe('reduceFlashing=1,vibration=1,mute=1');
 });
 
 test('a damaged saved value reads as the defaults', async ({ page }, info) => {
@@ -64,6 +72,18 @@ test('a damaged saved value reads as the defaults', async ({ page }, info) => {
   await expect.poll(() => scene(page)).toBe('Settings');
   expect((await settingsLines(page))?.[1]).toMatch(/REDUCE FLASHING {2}OFF$/);
   expect((await settingsLines(page))?.[3]).toMatch(/VIBRATION {2}ON$/);
+  expect((await settingsLines(page))?.[5]).toMatch(/MUTE {2}OFF$/);
+});
+
+test('settings saved before mute existed still load, with sound on', async ({ page }, info) => {
+  await openTitle(page);
+  await page.evaluate((k) => localStorage.setItem(k, 'reduceFlashing=1,vibration=0'), STORAGE_KEY);
+  await openTitle(page);
+  await tapGame(page, info, 192, TITLE_SETTINGS_Y);
+  await expect.poll(() => scene(page)).toBe('Settings');
+  expect((await settingsLines(page))?.[1]).toMatch(/REDUCE FLASHING {2}ON$/);
+  expect((await settingsLines(page))?.[3]).toMatch(/VIBRATION {2}OFF$/);
+  expect((await settingsLines(page))?.[5]).toMatch(/MUTE {2}OFF$/);
 });
 
 test('with reduce flashing on, a city hit neither flashes nor shakes', async ({ page }) => {

@@ -28,8 +28,8 @@ const throwing: KeyValueStore = {
 };
 
 describe('settings', () => {
-  it('defaults to flashing on (not reduced) and vibration on', () => {
-    expect(DEFAULT_SETTINGS).toEqual({ reduceFlashing: false, vibration: true });
+  it('defaults to flashing on (not reduced), vibration on and sound on', () => {
+    expect(DEFAULT_SETTINGS).toEqual({ reduceFlashing: false, vibration: true, mute: false });
     expect(loadSettings(null)).toEqual(DEFAULT_SETTINGS);
     expect(loadSettings(memoryStore())).toEqual(DEFAULT_SETTINGS);
   });
@@ -37,18 +37,28 @@ describe('settings', () => {
   it('round-trips every combination through storage', () => {
     for (const reduceFlashing of [false, true]) {
       for (const vibration of [false, true]) {
-        const store = memoryStore();
-        expect(saveSettings(store, { reduceFlashing, vibration })).toBe(true);
-        expect(loadSettings(store)).toEqual({ reduceFlashing, vibration });
+        for (const mute of [false, true]) {
+          const store = memoryStore();
+          expect(saveSettings(store, { reduceFlashing, vibration, mute })).toBe(true);
+          expect(loadSettings(store)).toEqual({ reduceFlashing, vibration, mute });
+        }
       }
     }
   });
 
   it('saves plain text under its own key', () => {
     const store = memoryStore();
-    saveSettings(store, { reduceFlashing: true, vibration: false });
-    expect(store.data.get(SETTINGS.storageKey)).toBe('reduceFlashing=1,vibration=0');
-    expect(formatSettings(DEFAULT_SETTINGS)).toBe('reduceFlashing=0,vibration=1');
+    saveSettings(store, { reduceFlashing: true, vibration: false, mute: true });
+    expect(store.data.get(SETTINGS.storageKey)).toBe('reduceFlashing=1,vibration=0,mute=1');
+    expect(formatSettings(DEFAULT_SETTINGS)).toBe('reduceFlashing=0,vibration=1,mute=0');
+  });
+
+  it('loads settings saved before mute existed, with sound on', () => {
+    expect(parseSettings('reduceFlashing=1,vibration=0')).toEqual({
+      reduceFlashing: true,
+      vibration: false,
+      mute: false,
+    });
   });
 
   it('reads anything malformed as the defaults', () => {
@@ -58,6 +68,10 @@ describe('settings', () => {
       'reduceFlashing=1',
       ' reduceFlashing=1,vibration=1',
       'reduceFlashing=1,vibration=1,extra=1',
+      'reduceFlashing=1,vibration=1,mute=2',
+      'reduceFlashing=1,vibration=1,mute=',
+      'reduceFlashing=1,vibration=1,mute=1,mute=1',
+      'mute=1,reduceFlashing=1,vibration=1',
       '{"reduceFlashing":true}',
       '<script>',
     ]) {

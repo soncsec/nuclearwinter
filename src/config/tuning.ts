@@ -1,4 +1,6 @@
 /** All gameplay numbers live here so they can be tuned in one place. */
+import type { SoundRecipe } from '../logic/sound';
+
 /** Native resolution in game pixels (ADR-NW02). */
 export const GAME_WIDTH = 384;
 export const GAME_HEIGHT = 216;
@@ -618,19 +620,19 @@ export const TITLE = {
 
 /** The settings screen (M4.5): its rows, and the keys that toggle them on desktop. */
 export const SETTINGS = {
-  /** localStorage key; approved 2026-10-18 for reduce flashing and vibration only. */
+  /** localStorage key; approved for reduce flashing and vibration (2026-10-18) and mute (2026-10-20). */
   storageKey: 'nuclearwinter.settings',
   titleY: 36,
   /** Each option's row, and the hint line under it. */
-  rowYs: [84, 120],
+  rowYs: [68, 100, 132],
   hintGap: 15,
   backY: 170,
   rowTapHalfHeight: 10,
   panelWidth: 300,
   panelHeight: 16,
   backPanelWidth: 120,
-  /** Keys: 1 and 2 toggle the options; Escape, Backspace or B go back. */
-  toggleKeys: ['1', '2'],
+  /** Keys: 1, 2 and 3 toggle the options; Escape, Backspace or B go back. */
+  toggleKeys: ['1', '2', '3'],
   backKeys: ['escape', 'backspace', 'b'],
 } as const;
 
@@ -659,4 +661,165 @@ export const DEBUG_OVERLAY = {
   /** Frames averaged for the frame rate; the worst frame among them is shown too. */
   sampleFrames: 120,
   alpha: 0.85,
+} as const;
+
+/** Notes used by the jingles, in hertz. */
+const NOTE = {
+  G3: 196,
+  C4: 262,
+  E4: 330,
+  G4: 392,
+  C5: 523,
+  E5: 659,
+  G5: 784,
+  C6: 1047,
+  E6: 1319,
+  G6: 1568,
+} as const;
+
+/** A quick run of notes: square lead, with a softer triangle an octave below. */
+function jingle(notes: readonly number[], stepMs: number, lastMs: number): SoundRecipe['layers'] {
+  return notes.flatMap((hz, i) => {
+    const durMs = i === notes.length - 1 ? lastMs : stepMs;
+    const at = { startMs: i * stepMs, durMs, attackMs: 3, curve: 1.5 };
+    return [
+      { kind: 'tone', wave: 'square', fromHz: hz, toHz: hz, gain: 0.6, ...at },
+      { kind: 'tone', wave: 'triangle', fromHz: hz / 2, toHz: hz / 2, gain: 0.5, ...at },
+    ] as const;
+  });
+}
+
+/**
+ * Sound effects (ADR-NW09), generated in code by `src/logic/sound.ts`. `peak` sets each sound's
+ * loudness; the noise seeds are fixed and separate from the gameplay random streams.
+ */
+export const SOUNDS = {
+  /** A counter-missile leaves its base: a rising whoosh with a faint chirp. */
+  launch: {
+    peak: 0.35,
+    layers: [
+      {
+        kind: 'noise',
+        seed: 11,
+        durMs: 220,
+        attackMs: 15,
+        cutoffFromHz: 700,
+        cutoffToHz: 5000,
+        gain: 1,
+      },
+      { kind: 'tone', wave: 'square', fromHz: 260, toHz: 780, durMs: 110, attackMs: 2, gain: 0.12 },
+    ],
+  },
+  /** A blast: a bright crack falling to a low rumble, with a thump underneath. */
+  blast: {
+    peak: 0.6,
+    layers: [
+      {
+        kind: 'noise',
+        seed: 21,
+        durMs: 750,
+        attackMs: 2,
+        cutoffFromHz: 6000,
+        cutoffToHz: 150,
+        gain: 1,
+      },
+      { kind: 'tone', wave: 'sine', fromHz: 120, toHz: 40, durMs: 320, attackMs: 2, gain: 0.9 },
+    ],
+  },
+  /** A city is destroyed: longer and deeper than a blast, with a gritty growl. */
+  cityHit: {
+    peak: 0.8,
+    layers: [
+      {
+        kind: 'noise',
+        seed: 31,
+        durMs: 1500,
+        attackMs: 4,
+        curve: 1.6,
+        cutoffFromHz: 3000,
+        cutoffToHz: 60,
+        gain: 1,
+      },
+      { kind: 'tone', wave: 'sine', fromHz: 75, toHz: 28, durMs: 1000, attackMs: 4, gain: 1 },
+      { kind: 'tone', wave: 'square', fromHz: 55, toHz: 30, durMs: 500, attackMs: 4, gain: 0.15 },
+    ],
+  },
+  /** One step of the end-of-wave bonus count-up. */
+  bonusTick: {
+    peak: 0.18,
+    layers: [
+      {
+        kind: 'tone',
+        wave: 'square',
+        fromHz: 1320,
+        toHz: 1320,
+        durMs: 35,
+        attackMs: 1,
+        curve: 1,
+        gain: 1,
+      },
+    ],
+  },
+  /** The wave is cleared: a rising arpeggio. */
+  waveCleared: { peak: 0.3, layers: jingle([NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6], 90, 260) },
+  /** Game over: a falling line over a fading rumble. */
+  gameOver: {
+    peak: 0.45,
+    layers: [
+      ...jingle([NOTE.G4, NOTE.E4, NOTE.C4, NOTE.G3], 260, 800),
+      {
+        kind: 'noise',
+        seed: 41,
+        durMs: 1600,
+        attackMs: 300,
+        curve: 1.2,
+        cutoffFromHz: 400,
+        cutoffToHz: 50,
+        gain: 0.5,
+      },
+    ],
+  },
+  /** A dull click when the player taps with no missiles left in range. */
+  empty: {
+    peak: 0.2,
+    layers: [
+      {
+        kind: 'tone',
+        wave: 'square',
+        fromHz: 150,
+        toHz: 110,
+        durMs: 60,
+        attackMs: 1,
+        curve: 1,
+        gain: 1,
+      },
+    ],
+  },
+  /** A bonus city is earned: a brighter, longer run than the wave jingle. */
+  bonusCity: {
+    peak: 0.3,
+    layers: jingle([NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6, NOTE.E6, NOTE.G6], 65, 300),
+  },
+} as const satisfies Record<string, SoundRecipe>;
+
+export type SoundName = keyof typeof SOUNDS;
+
+/** How the game plays the sounds (ADR-NW09). */
+export const AUDIO = {
+  /** Overall loudness, under `maxMasterVolume` so no mix of sounds can get harsh. */
+  masterVolume: 0.7,
+  maxMasterVolume: 0.8,
+  /** Most copies of each sound playing at once; another copy waits for one to end. */
+  voices: {
+    launch: 3,
+    blast: 4,
+    cityHit: 2,
+    bonusTick: 1,
+    waveCleared: 1,
+    gameOver: 1,
+    empty: 1,
+    bonusCity: 1,
+  } satisfies Record<SoundName, number>,
+  /** Least time between ticks while the end-of-wave bonus counts up. */
+  bonusTickEveryMs: 60,
 } as const;

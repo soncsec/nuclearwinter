@@ -12,11 +12,13 @@ interface Option {
 const OPTIONS: readonly Option[] = [
   { key: 'reduceFlashing', label: 'REDUCE FLASHING', hint: 'ALSO STOPS SCREEN SHAKE' },
   { key: 'vibration', label: 'VIBRATION', hint: 'ON PHONES THAT SUPPORT IT' },
+  { key: 'mute', label: 'MUTE', hint: 'TURNS OFF ALL SOUND' },
 ];
 
 /**
- * The settings screen (M4.5): reduce flashing and vibration, saved in localStorage. A tap on a
- * row (or its number key) toggles it; a tap on BACK (or Escape) returns to the title.
+ * The settings screen (M4.5): reduce flashing, vibration and mute (M6.2), saved in
+ * localStorage. A tap on a row (or its number key) toggles it; a tap on BACK (or Escape)
+ * returns to the title.
  */
 export class SettingsScene extends Phaser.Scene {
   private settings!: Settings;
