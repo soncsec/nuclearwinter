@@ -125,12 +125,14 @@ src/
 │   ├── geometry.ts    segments, circles, hit tests
 │   ├── waves.ts       wave number → wave description
 │   ├── scoring.ts     kill points, end-of-wave bonus, bonus cities, high score
+│   ├── help.ts        "How to play" pages, built from the tuning numbers
 │   ├── settings.ts    saved settings: reduce flashing, vibration, mute
 │   ├── sound.ts       sound recipes rendered to samples (ADR-NW09)
 │   └── voices.ts      cap on copies of each sound playing at once
 ├── entities/          pooled Phaser sprites that mirror logic state
 ├── scenes/            Title and Game (HUD, pause, wave and game-over screens): thin, call into logic/
 │   ├── audio.ts       generated sound buffers played through Phaser's sound manager, with mute
+│   ├── HelpScene.ts   "How to play" pages
 │   └── ui.ts          backdrop, centred text and localStorage access shared by the scenes
 └── debug/             testHook.ts: window.__game for Playwright (e2e build only);
                        DebugOverlay.ts: frame rate and counts (dev and e2e builds; production only with ?debug, as a separate chunk)
