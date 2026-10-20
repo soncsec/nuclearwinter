@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { openGame, snapshot, tapGame } from './helpers';
+import { openGame, snapshot, tapGame, waitInGameTime } from './helpers';
 
 test('wave 2 sends a bomber that drops warheads on the way across', async ({ page }, info) => {
+  // The waits below run on game time, which a busy machine slows down; allow for that.
+  test.setTimeout(300_000);
   await openGame(page, '?seed=7');
   await page.evaluate(() => window.__game?.finishWave());
   await expect
@@ -12,16 +14,20 @@ test('wave 2 sends a bomber that drops warheads on the way across', async ({ pag
     .toBe(true);
   await tapGame(page, info, 192, 100);
   await expect.poll(async () => (await snapshot(page)).wave).toBe(2);
-  // Wave 2 schedules one raider, which arrives on its own a few seconds in.
-  await expect.poll(async () => (await snapshot(page)).raiders.length, { timeout: 30_000 }).toBe(1);
+  // Wave 2 schedules one raider, which arrives on its own 4 s (game time) in.
+  expect(await waitInGameTime(page, (s) => s.raiders.length === 1, 8_000)).toBe('met');
   // From now on nothing else launches, so a new warhead can only come from the bomber.
   await page.evaluate(() => window.__game?.holdWave());
-  const before = (await snapshot(page)).warheads.length;
-  await expect
-    .poll(async () => (await snapshot(page)).warheads.length, { timeout: 30_000 })
-    .toBeGreaterThan(before);
-  const snap = await snapshot(page);
-  expect(snap.raiders[0]?.kind).toBe('bomber');
+  const before = await snapshot(page);
+  expect(before.raiders[0]?.kind).toBe('bomber');
+  const drops = before.raiders[0]?.dropsLeft ?? 0;
+  expect(drops).toBeGreaterThan(0);
+  // It drops its first warhead about a second after it comes on screen. Earlier warheads may
+  // land meanwhile, so count the bomber's drops rather than the warheads in the sky.
+  expect(await waitInGameTime(page, (s) => (s.raiders[0]?.dropsLeft ?? drops) < drops, 6_000)).toBe(
+    'met',
+  );
+  expect((await snapshot(page)).warheads.length).toBeGreaterThan(0);
 });
 
 test('a bomber caught in a blast is shot down for 100 points', async ({ page }) => {
