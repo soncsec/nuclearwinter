@@ -84,7 +84,7 @@ No dependencies are added beyond the template's.
 - **Alternatives:** Separate desktop and touch control schemes (twice the testing).
 - **Tradeoffs:** A finger hides the target point; the blast is large enough that this does not matter much. Checked on a real phone in M1.
 
-### ADR-NW07: Audio deferred — *Accepted*
+### ADR-NW07: Audio deferred — *Superseded by ADR-NW09*
 
 - **Context:** The art pack has no audio; the owner wants audio after the MVP.
 - **Decision:** No audio in version 1.0. Game events are emitted in one place, so sound can be hooked in later (M6). The source (generated with Web Audio or a CC0 pack) is decided with the owner before M6.
@@ -98,6 +98,19 @@ No dependencies are added beyond the template's.
   - `visual`: effects only; the rules never read it.
 - **Alternatives:** One generator for everything (visual tweaks change gameplay); `Math.random()` for visuals (unseeded, so screenshots and e2e runs differ).
 - **Tradeoffs:** Three streams to pass around. In return, the look can change freely without touching gameplay or the daily challenge.
+
+### ADR-NW09: Sound effects generated in code with the Web Audio API — *Accepted* (owner, 2026-10-20)
+
+- **Context:** M6 adds sound. The options were sounds generated in the browser or a CC0 sound pack (ADR-NW07).
+- **Decision:** Every sound is built in the browser from short recipes (tones, sweeps, filtered noise, envelopes) in the arcade style. No audio files and no new dependency.
+  - The recipes and the sample maths are plain TypeScript with unit tests: same recipe, same samples; peaks under a set limit; no silence or clipping.
+  - At start-up the samples are copied into Web Audio buffers, and Phaser's sound manager plays them. Phaser already starts audio on the first tap or key (browsers block sound before one) and pauses it when the tab is hidden.
+  - Any noise uses fixed seeds of its own, never the gameplay streams (ADR-NW08).
+  - Each sound has a cap on copies playing at once, and a master volume sits under a safe limit.
+  - A **mute** setting joins the settings screen and is saved with the other settings in localStorage. Older saved settings, without mute, still load as they are, with sound on.
+  - No Content-Security-Policy change: generated buffers load nothing.
+- **Alternatives:** A CC0 sound pack (needs approval of new third-party assets, adds download size, and has to be found to fit the style); Phaser's audio from files (same issue); a synth library (a new dependency for a handful of sounds).
+- **Tradeoffs:** Generated sounds are simpler than recorded ones; that suits the retro look. Tuning them is code work rather than swapping files, so a sound sampler page lets the owner hear and approve them before they are wired in.
 
 ## 3. Code structure
 

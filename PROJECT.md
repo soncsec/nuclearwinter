@@ -39,7 +39,7 @@ Casual players visiting `games.soncrant.com`, on any current browser and device.
 
 ### Out of scope for 1.0
 
-- Audio. It is planned for after the MVP (milestone M6); the approach (generated sound effects or a CC0 pack) will be decided with the owner then.
+- Audio. It follows the MVP in milestone M6: sound effects generated in code (ADR-NW09, owner 2026-10-20).
 - Online leaderboards, accounts, multiplayer, analytics.
 - Installing as an app and offline play (dropped 2026-10-18: service workers need HTTPS and the games host stays on HTTP, ADR-010).
 - Portrait-mode layout.
@@ -47,7 +47,7 @@ Casual players visiting `games.soncrant.com`, on any current browser and device.
 ## 5. Constraints (shared by every Soncrant Arcade game)
 
 - Browser only, single player.
-- No accounts, payments, analytics, cookies or third-party requests. localStorage holds only the high scores (normal and daily challenge) and the settings (reduce flashing, vibration).
+- No accounts, payments, analytics, cookies or third-party requests. localStorage holds only the high scores (normal and daily challenge) and the settings (reduce flashing, vibration, mute).
 - Art keeps its native pixel style; whole-number scaling only.
 - Served at `games.soncrant.com/nuclearwinter/` over HTTP (ADR-010), behind the security headers in the portal's Apache config.
 
@@ -86,7 +86,8 @@ A complete, replayable game, live on the portal, playable on desktop, phone and 
 | 2026-10-19 | MVP signed off by the owner; release as 1.0 (M5.5) |
 | 2026-10-19 | Tuning (M3.8): 12 missiles per base instead of 10; a bonus city every 5,000 points instead of the arcade's 10,000 |
 | 2026-10-19 | 1.0 tagged `v1.0.0` with a GitHub release |
+| 2026-10-20 | Audio (M6.1): sound effects generated in code with the Web Audio API, no audio files (ADR-NW09); a mute setting joins the saved settings |
 
 ## 9. Open questions
 
-1. Audio approach (before M6).
+None.
