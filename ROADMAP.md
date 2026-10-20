@@ -106,13 +106,24 @@
 
 **Demonstrable result:** Nuclear Winter has a card on the portal and plays on desktop, phone and tablet.
 
-- [ ] M5.1 Touch tuning on real phones and tablets (target size, no page scrolling or zooming)
-- [ ] M5.2 Automatic quality setting and frame-rate check on phones
+- [x] M5.1 Touch tuning on real phones and tablets (target size, no page scrolling or zooming) (owner 2026-10-19: feels good)
+- [x] M5.2 Automatic quality setting and frame-rate check on phones (bloom switches itself off when frames are slow, M4.7; owner 2026-10-19: phone frame rate good)
 - [x] M5.3 Load-time check (under 2 seconds on the local network): `scripts/load-time.mjs`; production 2026-10-19, 10 first visits: median 1.36 s, worst 1.52 s, 496 KiB (measured while the dev machine was heavily loaded)
 - [x] M5.4 Portal card image (256×192) and status `live` (portal PR #25, merged and released 2026-10-18 at the owner's request)
 - [ ] M5.5 Release 1.0 to production; production check workflow passes
 
 **Acceptance criteria:** every non-functional requirement in PROJECT.md met and recorded; owner signs off the MVP.
+
+**Non-functional requirements (recorded 2026-10-19):**
+
+| Requirement | Result |
+|---|---|
+| 60 fps on a mid-range laptop | Met: owner checked with `?debug` and bloom on |
+| Playable frame rate on a mid-range phone, quality dropping automatically | Met: 60 fps average, 54 worst (M1); owner found it good after the M4 effects; bloom switches itself off when frames are slow |
+| Loads in under 2 seconds on the local network | Met: production median 1.36 s, worst 1.52 s (M5.3) |
+| Passes every CI check, CodeQL, gitleaks and the ZAP baseline scan | Met: every merge to `main` passes all of them; ZAP 0 failures |
+
+**Owner sign-off:** MVP signed off 2026-10-19.
 
 ## M6 — Audio (after the MVP)
 
